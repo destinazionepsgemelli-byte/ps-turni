@@ -1,6 +1,7 @@
 let currentSlot = null;
 let pendingInsert = null;
 let pendingDelete = null;
+let turnistiList = [];
 
 function showToast(msg, type = '') {
   const c = document.getElementById('toast-container');
@@ -32,6 +33,69 @@ function dateRange(start, end) {
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
+}
+
+async function loadTurnisti() {
+  const { data } = await _supabase
+    .from('turnisti')
+    .select('nome')
+    .eq('attivo', true)
+    .order('nome');
+  turnistiList = (data || []).map(t => t.nome);
+}
+
+function setupAutocomplete(inputId, suggestionsId, otherInputId) {
+  const input = document.getElementById(inputId);
+  const box = document.getElementById(suggestionsId);
+
+  input.addEventListener('input', () => {
+    const val = input.value.trim().toLowerCase();
+    box.innerHTML = '';
+    if (!val) { box.style.display = 'none'; validateModal(); return; }
+
+    const otherVal = otherInputId
+      ? document.getElementById(otherInputId).value.trim()
+      : '';
+
+    const filtered = turnistiList.filter(n =>
+      n.toLowerCase().includes(val) && n !== otherVal
+    );
+
+    if (!filtered.length) { box.style.display = 'none'; validateModal(); return; }
+
+    filtered.forEach(nome => {
+      const item = document.createElement('div');
+      item.className = 'autocomplete-item';
+      item.textContent = nome;
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        input.value = nome;
+        box.style.display = 'none';
+        validateModal();
+      });
+      box.appendChild(item);
+    });
+    box.style.display = '';
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => { box.style.display = 'none'; }, 150);
+    validateModal();
+  });
+
+  input.addEventListener('focus', () => {
+    if (input.value.trim()) input.dispatchEvent(new Event('input'));
+  });
+}
+
+function validateModal() {
+  const nomeA = document.getElementById('modal-nome-a').value.trim();
+  const nomeB = document.getElementById('modal-nome-b').value.trim();
+  const nomeAValido = turnistiList.includes(nomeA);
+  const nomeBValido = nomeB === '' || turnistiList.includes(nomeB);
+  const ok = nomeAValido && nomeBValido && (nomeA !== nomeB || nomeB === '');
+  document.getElementById('modal-ok').disabled = !ok;
+  document.getElementById('modal-ok').style.opacity = ok ? '1' : '.4';
 }
 
 function renderBadge(pref) {
@@ -148,6 +212,8 @@ function openInsertModal(giorno, tipo) {
   pendingInsert = { giorno, tipo };
   document.getElementById('modal-nome-a').value = '';
   document.getElementById('modal-nome-b').value = '';
+  document.getElementById('modal-ok').disabled = true;
+  document.getElementById('modal-ok').style.opacity = '.4';
   document.getElementById('modal-title').textContent =
     tipo === 'desiderata'
       ? `🟢 Desiderata – ${fmtDate(giorno)}`
@@ -159,7 +225,8 @@ function openInsertModal(giorno, tipo) {
 async function doInsert() {
   const nomeA = document.getElementById('modal-nome-a').value.trim();
   const nomeB = document.getElementById('modal-nome-b').value.trim() || null;
-  if (!nomeA) { showToast('Inserisci almeno il tuo nome', 'error'); return; }
+  if (!turnistiList.includes(nomeA)) return;
+  if (nomeB && !turnistiList.includes(nomeB)) return;
 
   const { error } = await _supabase.from('preferenze').insert({
     slot_id: currentSlot.id,
@@ -175,13 +242,24 @@ async function doInsert() {
 }
 
 async function doDelete() {
+  const id = pendingDelete.id;
+  document.getElementById('confirm-overlay').classList.add('hidden');
+
+  // Rimuovi subito dalla UI
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (el) el.remove();
+
   const { error } = await _supabase
     .from('preferenze')
     .delete()
-    .eq('id', pendingDelete.id);
+    .eq('id', id);
 
-  document.getElementById('confirm-overlay').classList.add('hidden');
-  if (error) { showToast('Errore: ' + error.message, 'error'); return; }
+  if (error) {
+    showToast('Errore: ' + error.message, 'error');
+    // Ricarica la tabella se fallisce
+    await buildTable();
+    return;
+  }
   showToast('Rimosso', 'success');
 }
 
@@ -214,7 +292,7 @@ document.getElementById('modal-cancel').addEventListener('click', () =>
   document.getElementById('modal-overlay').classList.add('hidden'));
 document.getElementById('modal-ok').addEventListener('click', doInsert);
 document.getElementById('modal-nome-b').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doInsert();
+  if (e.key === 'Enter' && !document.getElementById('modal-ok').disabled) doInsert();
 });
 document.getElementById('confirm-cancel').addEventListener('click', () =>
   document.getElementById('confirm-overlay').classList.add('hidden'));
@@ -224,4 +302,8 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
     document.getElementById('modal-overlay').classList.add('hidden');
 });
 
-loadActiveSlot();
+// Avvio
+Promise.all([loadTurnisti(), loadActiveSlot()]).then(() => {
+  setupAutocomplete('modal-nome-a', 'suggestions-a', 'modal-nome-b');
+  setupAutocomplete('modal-nome-b', 'suggestions-b', 'modal-nome-a');
+});

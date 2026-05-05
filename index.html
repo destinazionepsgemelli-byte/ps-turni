@@ -76,24 +76,28 @@
   </div>
 </div>
 
+<!-- MODAL inserimento nome -->
 <div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal-box">
     <h3 id="modal-title">Inserisci la tua preferenza</h3>
-    <div class="form-group">
+    <div class="form-group" style="position:relative">
       <label>Il tuo nome</label>
-      <input type="text" id="modal-nome-a" placeholder="Es. Mario Rossi" autocomplete="off">
+      <input type="text" id="modal-nome-a" placeholder="Cerca il tuo nome…" autocomplete="off">
+      <div class="autocomplete-box" id="suggestions-a"></div>
     </div>
-    <div class="form-group">
+    <div class="form-group" style="position:relative">
       <label>In coppia con (opzionale)</label>
-      <input type="text" id="modal-nome-b" placeholder="Es. Anna Bianchi" autocomplete="off">
+      <input type="text" id="modal-nome-b" placeholder="Cerca il nome…" autocomplete="off">
+      <div class="autocomplete-box" id="suggestions-b"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="modal-cancel">Annulla</button>
-      <button class="btn btn-primary" id="modal-ok">Conferma</button>
+      <button class="btn btn-primary" id="modal-ok" disabled style="opacity:.4">Conferma</button>
     </div>
   </div>
 </div>
 
+<!-- MODAL conferma cancellazione -->
 <div class="modal-overlay hidden" id="confirm-overlay">
   <div class="modal-box">
     <h3>Conferma cancellazione</h3>
