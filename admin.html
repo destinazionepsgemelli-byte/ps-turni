@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Destinazione PS Turni</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="card">
+    <div style="font-size:2.5rem;text-align:center;margin-bottom:.5rem">🔐</div>
+    <h2 style="text-align:center;margin-bottom:1.5rem">Accesso Amministratore</h2>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pw" placeholder="••••••••" style="width:100%;padding:.6rem .9rem;border:1.5px solid #ddd;border-radius:8px;font-size:1rem;margin-top:4px">
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:.5rem" id="login-btn">Accedi</button>
+    <p id="login-error" style="color:#c62828;font-size:.85rem;margin-top:.5rem;text-align:center;display:none">Password errata</p>
+  </div>
+</div>
+
+<div id="admin-app" style="display:none">
+<header>
+  <div class="header-logo">🔧</div>
+  <div>
+    <h1>Admin – Destinazione PS Turni</h1>
+    <div class="subtitle">Pannello di amministrazione</div>
+  </div>
+  <button class="btn btn-secondary btn-sm" style="margin-left:auto" id="logout-btn">Esci</button>
+</header>
+
+<div class="container">
+  <div class="admin-nav">
+    <button class="nav-tab active" data-tab="impostazioni">⚙️ Impostazioni Slot</button>
+    <button class="nav-tab" data-tab="workspace">📋 Workspace Turni</button>
+    <button class="nav-tab" data-tab="turnisti">👥 Turnisti</button>
+  </div>
+
+  <!-- TAB IMPOSTAZIONI -->
+  <div id="tab-impostazioni">
+    <div class="card">
+      <h2>Crea nuovo slot</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label>Nome slot (es. Giugno 2026)</label>
+          <input type="text" id="s-nome" placeholder="Es. Giugno 2026">
+        </div>
+        <div class="form-group">
+          <label>Data chiusura richieste</label>
+          <input type="date" id="s-chiusura">
+        </div>
+        <div class="form-group">
+          <label>Data inizio</label>
+          <input type="date" id="s-inizio">
+        </div>
+        <div class="form-group">
+          <label>Data fine</label>
+          <input type="date" id="s-fine">
+        </div>
+      </div>
+      <button class="btn btn-success" id="pubblica-slot-btn">📢 Pubblica slot</button>
+    </div>
+    <div class="card">
+      <h2>Slot esistenti</h2>
+      <div id="slots-list"><em style="color:#aaa">Caricamento…</em></div>
+    </div>
+  </div>
+
+  <!-- TAB WORKSPACE -->
+  <div id="tab-workspace" style="display:none">
+    <div class="card">
+      <h2>Seleziona slot da gestire</h2>
+      <select id="ws-slot-select" style="padding:.5rem .8rem;border-radius:8px;border:1.5px solid #ddd;font-size:.9rem;min-width:250px">
+        <option value="">— Seleziona —</option>
+      </select>
+      <button class="btn btn-primary btn-sm" style="margin-left:.8rem" id="ws-load-btn">Carica</button>
+    </div>
+
+    <div id="ws-content" style="display:none">
+      <div class="workspace">
+        <div>
+          <div class="card">
+            <h2>📥 Desiderata e Indisponibilità</h2>
+            <div id="ws-preferenze"><em style="color:#aaa">—</em></div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:1rem 1.5rem;display:flex;align-items:center;gap:.8rem;border-bottom:1px solid #eee">
+              <h2 style="margin:0">📅 Calendario Turni</h2>
+              <button class="btn btn-primary btn-sm" id="auto-assign-btn">⚡ Auto-assegna</button>
+              <button class="btn btn-success btn-sm" id="pubblica-cal-btn">✅ Pubblica</button>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="cal-table" id="ws-cal-table">
+                <thead>
+                  <tr>
+                    <th>Giorno</th>
+                    <th>Turnista/i assegnato/i</th>
+                  </tr>
+                </thead>
+                <tbody id="ws-cal-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="workspace" style="margin-top:0">
+        <div class="card">
+          <h2>👥 Non ancora assegnati</h2>
+          <div id="unassigned-list"><em style="color:#aaa">—</em></div>
+        </div>
+        <div class="card">
+          <h2>⚖️ Contatori turni</h2>
+          <div id="turni-counters"><em style="color:#aaa">—</em></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB TURNISTI -->
+  <div id="tab-turnisti" style="display:none">
+    <div class="card">
+      <h2>Aggiungi turnista</h2>
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap">
+        <input type="text" id="t-nome" placeholder="Nome e Cognome" style="padding:.55rem .8rem;border:1.5px solid #ddd;border-radius:8px;font-size:.9rem;flex:1;min-width:200px">
+        <input type="number" id="t-turni" value="1" min="1" style="padding:.55rem .8rem;border:1.5px solid #ddd;border-radius:8px;font-size:.9rem;width:100px" title="Turni dovuti per slot">
+        <button class="btn btn-primary" id="add-turnista-btn">Aggiungi</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Elenco turnisti</h2>
+      <div id="turnisti-list"><em style="color:#aaa">Caricamento…</em></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- MODAL conferma -->
+<div class="modal-overlay hidden" id="admin-confirm-overlay">
+  <div class="modal-box">
+    <h3 id="admin-confirm-title">Conferma</h3>
+    <p id="admin-confirm-text" style="margin-bottom:1.2rem;color:#555;font-size:.9rem"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="admin-confirm-no">Annulla</button>
+      <button class="btn btn-danger" id="admin-confirm-yes">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/config.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

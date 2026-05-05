@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Destinazione PS – Preferenze Turni</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">🚑</div>
+  <div>
+    <h1>Destinazione PS – Preferenze Turni</h1>
+    <div class="subtitle">Inserisci le tue desiderata e indisponibilità</div>
+  </div>
+  <div style="margin-left:auto;font-size:.8rem;opacity:.7">
+    <span class="live-dot"></span>Live
+  </div>
+</header>
+
+<div class="container">
+  <div id="no-slot" class="card" style="text-align:center;padding:3rem;display:none">
+    <div style="font-size:3rem">📅</div>
+    <h2 style="margin-top:1rem;color:#888">Nessun calendario aperto</h2>
+    <p style="color:#aaa;margin-top:.5rem">L'amministratore non ha ancora aperto le richieste di preferenza.</p>
+  </div>
+
+  <div id="slot-container" style="display:none">
+    <div class="slot-info-bar">
+      <div class="info-item">
+        <label style="opacity:.7;font-size:.75rem">SLOT</label>
+        <strong id="slot-nome">—</strong>
+      </div>
+      <div class="info-item">
+        <label style="opacity:.7;font-size:.75rem">PERIODO</label>
+        <strong id="slot-periodo">—</strong>
+      </div>
+      <div class="info-item">
+        <label style="opacity:.7;font-size:.75rem">CHIUSURA RICHIESTE</label>
+        <strong id="slot-chiusura">—</strong>
+      </div>
+      <div class="info-item">
+        <label style="opacity:.7;font-size:.75rem">STATO</label>
+        <strong id="slot-stato">—</strong>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto">
+        <table class="cal-table" id="cal-table">
+          <thead>
+            <tr>
+              <th class="col-data">Giorno</th>
+              <th class="col-header-green" style="width:45%">
+                🟢 Desiderata
+                <span style="font-weight:400;font-size:.75rem;opacity:.8"> – giorni in cui vuoi lavorare</span>
+              </th>
+              <th class="col-header-red" style="width:45%">
+                🔴 Indisponibilità
+                <span style="font-weight:400;font-size:.75rem;opacity:.8"> – giorni in cui NON puoi lavorare</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="cal-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL inserimento nome -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Inserisci la tua preferenza</h3>
+    <div class="form-group">
+      <label>Il tuo nome</label>
+      <input type="text" id="modal-nome-a" placeholder="Es. Mario Rossi" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>In coppia con (opzionale)</label>
+      <input type="text" id="modal-nome-b" placeholder="Es. Anna Bianchi" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modal-cancel">Annulla</button>
+      <button class="btn btn-primary" id="modal-ok">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL conferma cancellazione -->
+<div class="modal-overlay hidden" id="confirm-overlay">
+  <div class="modal-box">
+    <h3>Conferma cancellazione</h3>
+    <p id="confirm-text" style="margin-bottom:1.2rem;color:#555;font-size:.9rem"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="confirm-cancel">Annulla</button>
+      <button class="btn btn-danger" id="confirm-ok">Elimina</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/config.js"></script>
+<script src="js/public.js"></script>
+</body>
+</html>
