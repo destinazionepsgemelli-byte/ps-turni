@@ -180,7 +180,7 @@ async function doDelete() {
 }
 
 function subscribeRealtime() {
-  supabase
+  _supabase
     .channel('preferenze-public')
     .on('postgres_changes', {
       event: '*',
