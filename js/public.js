@@ -77,7 +77,7 @@ function setupAutocomplete(inputId, suggestionsId, otherInputId) {
       });
       box.appendChild(item);
     });
-    box.style.display = '';
+    box.style.display = 'block';
   });
 
   input.addEventListener('blur', () => {
