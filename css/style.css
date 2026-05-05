@@ -219,6 +219,7 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 .drag-item { cursor: grab; user-select: none; }
 .drag-item:active { cursor: grabbing; }
 .drag-over { outline: 2px dashed #1565c0; background: #e3f2fd !important; }
+.indisp-highlight { background: rgba(244, 67, 54, 0.12) !important; outline: 1px dashed rgba(244, 67, 54, 0.5); }
 
 /* ========== LIVE DOT ========== */
 .live-dot {

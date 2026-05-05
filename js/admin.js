@@ -69,18 +69,41 @@ function dateRange(start, end) {
 }
 
 let adminConfirmCallback = null;
-function adminConfirm(title, text, onYes) {
+let adminCancelCallback = null;
+let _dropHandled = false;
+
+function adminConfirm(title, text, onYes, onNo) {
   document.getElementById('admin-confirm-title').textContent = title;
   document.getElementById('admin-confirm-text').textContent = text;
   adminConfirmCallback = onYes;
+  adminCancelCallback = onNo || null;
   document.getElementById('admin-confirm-overlay').classList.remove('hidden');
 }
-document.getElementById('admin-confirm-no').addEventListener('click', () =>
-  document.getElementById('admin-confirm-overlay').classList.add('hidden'));
+document.getElementById('admin-confirm-no').addEventListener('click', () => {
+  document.getElementById('admin-confirm-overlay').classList.add('hidden');
+  if (adminCancelCallback) { adminCancelCallback(); adminCancelCallback = null; }
+});
 document.getElementById('admin-confirm-yes').addEventListener('click', () => {
   document.getElementById('admin-confirm-overlay').classList.add('hidden');
   if (adminConfirmCallback) adminConfirmCallback();
 });
+
+function highlightIndisp(nomi) {
+  document.querySelectorAll('#ws-cal-body td[data-giorno]').forEach(td => {
+    const giorno = td.dataset.giorno;
+    const haIndisp = nomi.some(nome =>
+      wsPreferenze.some(p =>
+        p.tipo === 'indisponibilita' && p.giorno === giorno &&
+        (p.nome_a === nome || p.nome_b === nome)
+      )
+    );
+    if (haIndisp) td.classList.add('indisp-highlight');
+  });
+}
+
+function clearHighlightIndisp() {
+  document.querySelectorAll('.indisp-highlight').forEach(el => el.classList.remove('indisp-highlight'));
+}
 
 // ---- MODIFICA SLOT ----
 function openEditSlot(s) {
@@ -257,7 +280,13 @@ function renderWsCalendar() {
     td.addEventListener('drop', e => {
       e.preventDefault();
       td.classList.remove('drag-over');
-      handleDrop(e.dataTransfer.getData('text/plain'), d, e.dataTransfer.getData('from-giorno'));
+      handleDrop(
+        e.dataTransfer.getData('text/plain'),
+        e.dataTransfer.getData('nome-b') || null,
+        d,
+        e.dataTransfer.getData('from-giorno'),
+        e.dataTransfer.getData('ass-id')
+      );
     });
     wsAssegnazioni.filter(a => a.giorno === d).forEach(a => td.appendChild(makeAssignBadge(a)));
     const addBtn = document.createElement('button');
@@ -278,26 +307,58 @@ function makeAssignBadge(a) {
   span.dataset.assId = a.id;
   span.innerHTML = `${label}<button class="badge-x" title="Rimuovi">✕</button>`;
   span.addEventListener('dragstart', e => {
+    _dropHandled = false;
     e.dataTransfer.setData('text/plain', a.nome_a);
     e.dataTransfer.setData('nome-b', a.nome_b || '');
     e.dataTransfer.setData('from-giorno', a.giorno);
     e.dataTransfer.setData('ass-id', a.id);
+    setTimeout(() => highlightIndisp([a.nome_a, a.nome_b].filter(Boolean)), 0);
+  });
+  span.addEventListener('dragend', () => {
+    clearHighlightIndisp();
+    if (!_dropHandled) removeAssign(a);
   });
   span.querySelector('.badge-x').addEventListener('click', () => removeAssign(a));
   return span;
 }
 
-async function handleDrop(nomeA, giornoTarget, fromGiorno) {
+async function handleDrop(nomeA, nomeB, giornoTarget, fromGiorno, assId) {
+  _dropHandled = true;
   if (fromGiorno === giornoTarget) return;
-  const existing = wsAssegnazioni.find(a => a.giorno === fromGiorno && a.nome_a === nomeA);
-  if (existing) {
-    const { error } = await _supabase.from('assegnazioni').update({ giorno: giornoTarget }).eq('id', existing.id);
-    if (!error) {
-      existing.giorno = giornoTarget;
-      renderWsCalendar();
-      renderUnassigned();
-      renderCounters();
-      showToast(`${nomeA} spostato`, 'success');
+
+  // Controlla indisponibilità per il giorno target
+  const nomi = [nomeA, nomeB].filter(Boolean);
+  const haIndisp = nomi.some(nome =>
+    wsPreferenze.some(p =>
+      p.tipo === 'indisponibilita' && p.giorno === giornoTarget &&
+      (p.nome_a === nome || p.nome_b === nome)
+    )
+  );
+
+  if (haIndisp) {
+    const label = nomeB ? `${nomeA} + ${nomeB}` : nomeA;
+    const proceed = await new Promise(resolve => {
+      adminConfirm(
+        '⚠️ Indisponibilità dichiarata',
+        `${label} ha dichiarato indisponibilità per questo giorno. Vuoi assegnarlo comunque?`,
+        () => resolve(true),
+        () => resolve(false)
+      );
+    });
+    if (!proceed) return;
+  }
+
+  if (fromGiorno !== '__unassigned__') {
+    const existing = wsAssegnazioni.find(a => a.id === assId || (a.giorno === fromGiorno && a.nome_a === nomeA));
+    if (existing) {
+      const { error } = await _supabase.from('assegnazioni').update({ giorno: giornoTarget }).eq('id', existing.id);
+      if (!error) {
+        existing.giorno = giornoTarget;
+        renderWsCalendar();
+        renderUnassigned();
+        renderCounters();
+        showToast(`${nomeA} spostato`, 'success');
+      }
     }
   } else {
     await insertAssign(giornoTarget, nomeA, null);
@@ -329,16 +390,14 @@ async function decrementaContatore(nomeA, nomeB) {
 }
 
 async function removeAssign(a) {
-  adminConfirm('Rimuovi assegnazione',
-    `Rimuovere ${a.nome_b ? a.nome_a + ' + ' + a.nome_b : a.nome_a} dal ${fmtDate(a.giorno)}?`,
-    async () => {
-      await _supabase.from('assegnazioni').delete().eq('id', a.id);
-      wsAssegnazioni = wsAssegnazioni.filter(x => x.id !== a.id);
-      await decrementaContatore(a.nome_a, a.nome_b);
-      renderWsCalendar();
-      renderUnassigned();
-      renderCounters();
-    });
+  const label = a.nome_b ? `${a.nome_a} + ${a.nome_b}` : a.nome_a;
+  await _supabase.from('assegnazioni').delete().eq('id', a.id);
+  wsAssegnazioni = wsAssegnazioni.filter(x => x.id !== a.id);
+  await decrementaContatore(a.nome_a, a.nome_b);
+  renderWsCalendar();
+  renderUnassigned();
+  renderCounters();
+  showToast(`${label} rimosso dal ${fmtDate(a.giorno)}`);
 }
 
 function openManualAssign(giorno) {
@@ -363,19 +422,25 @@ function renderUnassigned() {
     span.draggable = true;
     span.textContent = t.nome;
     span.addEventListener('dragstart', e => {
+      _dropHandled = false;
       e.dataTransfer.setData('text/plain', t.nome);
       e.dataTransfer.setData('from-giorno', '__unassigned__');
+      setTimeout(() => highlightIndisp([t.nome]), 0);
     });
+    span.addEventListener('dragend', () => clearHighlightIndisp());
     div.appendChild(span);
   });
 }
 
-async function renderCounters() {
+function renderCounters() {
   const div = document.getElementById('turni-counters');
-  const { data: counters } = await _supabase.from('turni_contatore')
-    .select('*').eq('slot_id', wsSlot.id);
-  const map = {};
-  (counters || []).forEach(c => map[c.nome] = c.turni_fatti);
+  // Calcola direttamente da wsAssegnazioni per avere sempre valori in sync
+  const fattiMap = {};
+  wsAssegnazioni.forEach(a => {
+    const v = a.nome_b ? 0.5 : 1;
+    fattiMap[a.nome_a] = (fattiMap[a.nome_a] || 0) + v;
+    if (a.nome_b) fattiMap[a.nome_b] = (fattiMap[a.nome_b] || 0) + v;
+  });
   let html = '<table style="width:100%;font-size:.85rem;border-collapse:collapse">';
   html += `<tr>
     <th style="text-align:left;padding:.3rem .5rem;border-bottom:2px solid var(--border);color:var(--text)">Turnista</th>
@@ -384,7 +449,7 @@ async function renderCounters() {
     <th style="padding:.3rem;border-bottom:2px solid var(--border);color:var(--text)">Delta</th>
   </tr>`;
   wsTurnisti.forEach(t => {
-    const fatti = map[t.nome] || 0;
+    const fatti = fattiMap[t.nome] || 0;
     const delta = fatti - t.turni_dovuti_per_slot;
     const color = delta >= 0 ? '#2e7d32' : '#c62828';
     html += `<tr>
