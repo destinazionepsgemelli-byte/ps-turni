@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <script>
-    if (localStorage.getItem('ps_theme') === 'dark')
+    if (localStorage.getItem('ps_theme') !== 'light')
       document.documentElement.classList.add('dark-mode');
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -75,7 +75,7 @@
 <script src="js/public.js"></script>
 <script>
   const themeBtn = document.getElementById('theme-toggle');
-  if (localStorage.getItem('ps_theme') === 'dark') themeBtn.textContent = '☀️ Chiaro';
+  if (localStorage.getItem('ps_theme') !== 'light') themeBtn.textContent = '☀️ Chiaro';
   themeBtn.addEventListener('click', () => {
     document.documentElement.classList.toggle('dark-mode');
     const isDark = document.documentElement.classList.contains('dark-mode');
