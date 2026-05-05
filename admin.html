@@ -146,6 +146,7 @@
 </div>
 </div>
 
+<!-- MODAL conferma generica -->
 <div class="modal-overlay hidden" id="admin-confirm-overlay">
   <div class="modal-box">
     <h3 id="admin-confirm-title">Conferma</h3>
@@ -153,6 +154,34 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" id="admin-confirm-no">Annulla</button>
       <button class="btn btn-danger" id="admin-confirm-yes">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL modifica slot -->
+<div class="modal-overlay hidden" id="edit-slot-overlay">
+  <div class="modal-box" style="min-width:360px">
+    <h3>✏️ Modifica slot</h3>
+    <input type="hidden" id="edit-slot-id">
+    <div class="form-group">
+      <label>Nome slot</label>
+      <input type="text" id="edit-s-nome">
+    </div>
+    <div class="form-group">
+      <label>Data inizio</label>
+      <input type="date" id="edit-s-inizio">
+    </div>
+    <div class="form-group">
+      <label>Data fine</label>
+      <input type="date" id="edit-s-fine">
+    </div>
+    <div class="form-group">
+      <label>Data chiusura richieste</label>
+      <input type="date" id="edit-s-chiusura">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="edit-slot-cancel">Annulla</button>
+      <button class="btn btn-primary" id="edit-slot-ok">Salva modifiche</button>
     </div>
   </div>
 </div>

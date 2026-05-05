@@ -82,6 +82,41 @@ document.getElementById('admin-confirm-yes').addEventListener('click', () => {
   if (adminConfirmCallback) adminConfirmCallback();
 });
 
+// ---- MODIFICA SLOT ----
+function openEditSlot(s) {
+  document.getElementById('edit-slot-id').value = s.id;
+  document.getElementById('edit-s-nome').value = s.nome;
+  document.getElementById('edit-s-inizio').value = s.data_inizio;
+  document.getElementById('edit-s-fine').value = s.data_fine;
+  document.getElementById('edit-s-chiusura').value = s.data_chiusura_richieste || '';
+  document.getElementById('edit-slot-overlay').classList.remove('hidden');
+}
+
+document.getElementById('edit-slot-cancel').addEventListener('click', () =>
+  document.getElementById('edit-slot-overlay').classList.add('hidden'));
+
+document.getElementById('edit-slot-ok').addEventListener('click', async () => {
+  const id = document.getElementById('edit-slot-id').value;
+  const nome = document.getElementById('edit-s-nome').value.trim();
+  const inizio = document.getElementById('edit-s-inizio').value;
+  const fine = document.getElementById('edit-s-fine').value;
+  const chiusura = document.getElementById('edit-s-chiusura').value || null;
+  if (!nome || !inizio || !fine) { showToast('Compila tutti i campi obbligatori', 'error'); return; }
+  if (fine < inizio) { showToast('La data fine deve essere dopo la data inizio', 'error'); return; }
+  const { error } = await _supabase.from('slots').update({
+    nome, data_inizio: inizio, data_fine: fine, data_chiusura_richieste: chiusura
+  }).eq('id', id);
+  document.getElementById('edit-slot-overlay').classList.add('hidden');
+  if (error) { showToast('Errore: ' + error.message, 'error'); return; }
+  showToast('Slot aggiornato!', 'success');
+  loadSlots();
+});
+
+document.getElementById('edit-slot-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('edit-slot-overlay'))
+    document.getElementById('edit-slot-overlay').classList.add('hidden');
+});
+
 // ---- VARIABILI WORKSPACE ----
 let wsSlot = null;
 let wsPreferenze = [];
@@ -103,13 +138,14 @@ async function loadSlots() {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--border);flex-wrap:wrap';
     row.innerHTML = `
-      <span style="font-weight:600;flex:1">${s.nome}</span>
+      <span style="font-weight:600;flex:1;color:var(--text)">${s.nome}</span>
       <span style="font-size:.82rem;color:var(--text-muted)">${fmtDate(s.data_inizio)} → ${fmtDate(s.data_fine)}</span>
       <span style="font-size:.8rem">${s.pubblicato
         ? '<span style="color:#2e7d32">✅ Pubblicato</span>'
         : '<span style="color:#aaa">⏸ Bozza</span>'}</span>
       ${!s.pubblicato ? `<button class="btn btn-success btn-sm" onclick="publishSlot('${s.id}')">Pubblica</button>` : ''}
-      <button class="btn btn-danger btn-sm" onclick="deleteSlot('${s.id}','${s.nome}')">Elimina</button>
+      <button class="btn btn-secondary btn-sm" onclick='openEditSlot(${JSON.stringify(s)})'>✏️ Modifica</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSlot('${s.id}','${s.nome.replace(/'/g,"\\'")}')">Elimina</button>
     `;
     div.appendChild(row);
   });
@@ -444,7 +480,7 @@ async function loadTurnisti() {
       <input type="number" value="${t.turni_dovuti_per_slot}" min="1"
         style="width:60px;padding:.3rem .5rem;border:1px solid var(--border);border-radius:6px;font-size:.85rem;background:var(--bg-card);color:var(--text)"
         onchange="updateTurniDovuti('${t.id}', this.value)">
-      <button class="btn btn-danger btn-sm" onclick="deleteTurnista('${t.id}','${t.nome}')">Rimuovi</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteTurnista('${t.id}','${t.nome.replace(/'/g,"\\'")}')">Rimuovi</button>
     `;
     div.appendChild(row);
   });

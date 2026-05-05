@@ -35,15 +35,26 @@ function dateRange(start, end) {
   return dates;
 }
 
+function isSlotClosed() {
+  const today = new Date().toISOString().slice(0, 10);
+  return currentSlot?.data_chiusura_richieste && today > currentSlot.data_chiusura_richieste;
+}
+
+function updateStatoBadge() {
+  if (!currentSlot) return;
+  const chiuso = isSlotClosed();
+  const statoEl = document.getElementById('slot-stato');
+  statoEl.textContent = chiuso ? '🔒 Chiuso' : '✅ Aperto';
+  statoEl.className = chiuso ? 'stato-chiuso' : 'stato-aperto';
+}
+
 async function loadTurnisti() {
   const { data, error } = await _supabase
     .from('turnisti')
     .select('nome')
     .eq('attivo', true)
     .order('nome');
-  console.log('Turnisti:', data, 'Errore:', error);
   turnistiList = (data || []).map(t => t.nome);
-  console.log('turnistiList:', turnistiList);
 }
 
 function setupAutocomplete(inputId, suggestionsId, otherInputId) {
@@ -112,6 +123,7 @@ function renderBadge(pref) {
 }
 
 function openConfirmDelete(pref) {
+  if (isSlotClosed()) { showToast('Le richieste sono chiuse', 'error'); return; }
   const label = pref.nome_b ? `${pref.nome_a} + ${pref.nome_b}` : pref.nome_a;
   pendingDelete = { id: pref.id, label };
   document.getElementById('confirm-text').textContent =
@@ -120,7 +132,6 @@ function openConfirmDelete(pref) {
 }
 
 async function loadActiveSlot() {
-  const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await _supabase
     .from('slots')
     .select('*')
@@ -144,10 +155,9 @@ async function loadActiveSlot() {
   document.getElementById('slot-chiusura').textContent =
     data.data_chiusura_richieste ? fmtDate(data.data_chiusura_richieste) : '—';
 
-  const chiuso = data.data_chiusura_richieste && today > data.data_chiusura_richieste;
-  const statoEl = document.getElementById('slot-stato');
-  statoEl.textContent = chiuso ? '🔒 Chiuso' : '✅ Aperto';
-  statoEl.className = chiuso ? 'stato-chiuso' : 'stato-aperto';
+  updateStatoBadge();
+  // Aggiorna il badge ogni minuto senza ricaricare la pagina
+  setInterval(updateStatoBadge, 60000);
 
   await buildTable();
   subscribeRealtime();
@@ -206,11 +216,7 @@ async function buildTable() {
 }
 
 function openInsertModal(giorno, tipo) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (currentSlot.data_chiusura_richieste && today > currentSlot.data_chiusura_richieste) {
-    showToast('Le richieste sono chiuse', 'error');
-    return;
-  }
+  if (isSlotClosed()) { showToast('Le richieste sono chiuse', 'error'); return; }
   pendingInsert = { giorno, tipo };
   document.getElementById('modal-nome-a').value = '';
   document.getElementById('modal-nome-b').value = '';
@@ -247,7 +253,6 @@ async function doDelete() {
   const id = pendingDelete.id;
   document.getElementById('confirm-overlay').classList.add('hidden');
 
-  // Rimuovi subito dalla UI
   const el = document.querySelector(`[data-id="${id}"]`);
   if (el) el.remove();
 
@@ -258,7 +263,6 @@ async function doDelete() {
 
   if (error) {
     showToast('Errore: ' + error.message, 'error');
-    // Ricarica la tabella se fallisce
     await buildTable();
     return;
   }
@@ -304,7 +308,6 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
     document.getElementById('modal-overlay').classList.add('hidden');
 });
 
-// Avvio
 Promise.all([loadTurnisti(), loadActiveSlot()]).then(() => {
   setupAutocomplete('modal-nome-a', 'suggestions-a', 'modal-nome-b');
   setupAutocomplete('modal-nome-b', 'suggestions-b', 'modal-nome-a');
