@@ -36,12 +36,14 @@ function dateRange(start, end) {
 }
 
 async function loadTurnisti() {
-  const { data } = await _supabase
+  const { data, error } = await _supabase
     .from('turnisti')
     .select('nome')
     .eq('attivo', true)
     .order('nome');
+  console.log('Turnisti:', data, 'Errore:', error);
   turnistiList = (data || []).map(t => t.nome);
+  console.log('turnistiList:', turnistiList);
 }
 
 function setupAutocomplete(inputId, suggestionsId, otherInputId) {
