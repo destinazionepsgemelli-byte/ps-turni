@@ -316,12 +316,25 @@ async function insertAssign(giorno, nomeA, nomeB) {
   renderCounters();
 }
 
+async function decrementaContatore(nomeA, nomeB) {
+  const valore = nomeB ? 0.5 : 1;
+  for (const nome of [nomeA, nomeB].filter(Boolean)) {
+    const { data: existing } = await _supabase.from('turni_contatore')
+      .select('*').eq('slot_id', wsSlot.id).eq('nome', nome).single();
+    if (existing) {
+      await _supabase.from('turni_contatore')
+        .update({ turni_fatti: Math.max(0, existing.turni_fatti - valore) }).eq('id', existing.id);
+    }
+  }
+}
+
 async function removeAssign(a) {
   adminConfirm('Rimuovi assegnazione',
     `Rimuovere ${a.nome_b ? a.nome_a + ' + ' + a.nome_b : a.nome_a} dal ${fmtDate(a.giorno)}?`,
     async () => {
       await _supabase.from('assegnazioni').delete().eq('id', a.id);
       wsAssegnazioni = wsAssegnazioni.filter(x => x.id !== a.id);
+      await decrementaContatore(a.nome_a, a.nome_b);
       renderWsCalendar();
       renderUnassigned();
       renderCounters();
@@ -406,48 +419,85 @@ document.getElementById('auto-assign-btn').addEventListener('click', autoAssign)
 
 async function autoAssign() {
   adminConfirm('Auto-assegnazione',
-    'Genera automaticamente il calendario? Le assegnazioni esistenti vengono mantenute.',
+    'Assegna i turnisti che hanno messo desiderata, rispettando il budget turni. Le assegnazioni esistenti vengono mantenute.',
     async () => {
       const dates = dateRange(wsSlot.data_inizio, wsSlot.data_fine);
-      const assignedDays = new Set(wsAssegnazioni.map(a => a.giorno));
-      const counter = {};
-      wsTurnisti.forEach(t => { counter[t.nome] = 0; });
+
+      // Turni già fatti (da assegnazioni preesistenti)
+      const fatti = {};
+      wsTurnisti.forEach(t => { fatti[t.nome] = 0; });
       wsAssegnazioni.forEach(a => {
         const v = a.nome_b ? 0.5 : 1;
-        counter[a.nome_a] = (counter[a.nome_a] || 0) + v;
-        if (a.nome_b) counter[a.nome_b] = (counter[a.nome_b] || 0) + v;
+        if (fatti[a.nome_a] !== undefined) fatti[a.nome_a] += v;
+        if (a.nome_b && fatti[a.nome_b] !== undefined) fatti[a.nome_b] += v;
       });
+
+      // Budget massimo (turni dovuti + 0.5 di tolleranza)
+      const budgetMax = {};
+      wsTurnisti.forEach(t => { budgetMax[t.nome] = t.turni_dovuti_per_slot + 0.5; });
+
+      // Desiderata raggruppate per giorno
+      const desByDay = {};
+      wsPreferenze.filter(p => p.tipo === 'desiderata').forEach(p => {
+        if (!desByDay[p.giorno]) desByDay[p.giorno] = [];
+        desByDay[p.giorno].push(p);
+      });
+
+      // Giorni con desiderata per ogni turnista (da nome_a)
+      const availDays = {};
+      wsTurnisti.forEach(t => { availDays[t.nome] = []; });
+      wsPreferenze.filter(p => p.tipo === 'desiderata').forEach(p => {
+        if (availDays[p.nome_a] !== undefined) availDays[p.nome_a].push(p.giorno);
+      });
+
+      const assignedDays = new Set(wsAssegnazioni.map(a => a.giorno));
+
+      // Capacità residua sufficiente per singolo o coppia
+      const hasBudget = (nome, isCoppia) =>
+        (fatti[nome] || 0) + (isCoppia ? 0.5 : 1) <= (budgetMax[nome] || 0);
+
+      // Quanti altri giorni liberi ha questo turnista (escluso il giorno corrente)
+      const altriGiorni = (nome, escludi) =>
+        (availDays[nome] || []).filter(d => !assignedDays.has(d) && d !== escludi).length;
 
       for (const d of dates) {
         if (assignedDays.has(d)) continue;
-        const indisponibili = new Set(
-          wsPreferenze.filter(p => p.giorno === d && p.tipo === 'indisponibilita')
-            .flatMap(p => [p.nome_a, p.nome_b].filter(Boolean))
-        );
-        const candidati = wsTurnisti
-          .filter(t => !indisponibili.has(t.nome))
-          .sort((a, b) => {
-            const dA = wsPreferenze.some(p => p.giorno === d && p.tipo === 'desiderata' && p.nome_a === a.nome) ? -1 : 0;
-            const dB = wsPreferenze.some(p => p.giorno === d && p.tipo === 'desiderata' && p.nome_a === b.nome) ? -1 : 0;
-            if (dA !== dB) return dA - dB;
-            return (counter[a.nome] || 0) - (counter[b.nome] || 0);
-          });
+        const candidati = desByDay[d] || [];
         if (!candidati.length) continue;
 
-        const coppia = wsPreferenze.find(p =>
-          p.giorno === d && p.tipo === 'desiderata' && p.nome_b &&
-          !indisponibili.has(p.nome_a) && !indisponibili.has(p.nome_b)
+        // Prova prima le coppie con entrambi nel budget
+        const coppieValide = candidati.filter(p =>
+          p.nome_b && hasBudget(p.nome_a, true) && hasBudget(p.nome_b, true)
         );
 
-        if (coppia) {
-          await insertAssign(d, coppia.nome_a, coppia.nome_b);
-          counter[coppia.nome_a] = (counter[coppia.nome_a] || 0) + 0.5;
-          counter[coppia.nome_b] = (counter[coppia.nome_b] || 0) + 0.5;
-        } else {
-          await insertAssign(d, candidati[0].nome, null);
-          counter[candidati[0].nome] = (counter[candidati[0].nome] || 0) + 1;
+        if (coppieValide.length > 0) {
+          // Priorità alla coppia con meno alternative (più difficile da collocare)
+          coppieValide.sort((a, b) =>
+            (altriGiorni(a.nome_a, d) + altriGiorni(a.nome_b, d)) -
+            (altriGiorni(b.nome_a, d) + altriGiorni(b.nome_b, d))
+          );
+          const scelta = coppieValide[0];
+          await insertAssign(d, scelta.nome_a, scelta.nome_b);
+          fatti[scelta.nome_a] = (fatti[scelta.nome_a] || 0) + 0.5;
+          fatti[scelta.nome_b] = (fatti[scelta.nome_b] || 0) + 0.5;
+          assignedDays.add(d);
+          continue;
         }
+
+        // Poi i singoli nel budget
+        const singoli = [...new Set(candidati.map(p => p.nome_a))]
+          .filter(nome => hasBudget(nome, false));
+
+        if (!singoli.length) continue;
+
+        // Priorità a chi ha meno altri giorni disponibili (più scarso, più urgente)
+        singoli.sort((a, b) => altriGiorni(a, d) - altriGiorni(b, d));
+        const scelto = singoli[0];
+        await insertAssign(d, scelto, null);
+        fatti[scelto] = (fatti[scelto] || 0) + 1;
+        assignedDays.add(d);
       }
+
       showToast('Auto-assegnazione completata!', 'success');
       await loadWorkspace();
     });
