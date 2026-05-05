@@ -46,17 +46,23 @@ function showToast(msg, type = '') {
 }
 
 function fmtDate(d) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('it-IT', {
+  const [y, m, day] = d.split('-');
+  return new Date(y, m - 1, day).toLocaleDateString('it-IT', {
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
   });
 }
 
 function dateRange(start, end) {
   const dates = [];
-  const cur = new Date(start + 'T00:00:00');
-  const fin = new Date(end + 'T00:00:00');
+  const [sy, sm, sd] = start.split('-');
+  const [ey, em, ed] = end.split('-');
+  const cur = new Date(sy, sm - 1, sd);
+  const fin = new Date(ey, em - 1, ed);
   while (cur <= fin) {
-    dates.push(cur.toISOString().slice(0, 10));
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const d = String(cur.getDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${d}`);
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
@@ -95,10 +101,10 @@ async function loadSlots() {
   div.innerHTML = '';
   data.forEach(s => {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid #f0f0f0;flex-wrap:wrap';
+    row.style.cssText = 'display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--border);flex-wrap:wrap';
     row.innerHTML = `
       <span style="font-weight:600;flex:1">${s.nome}</span>
-      <span style="font-size:.82rem;color:#666">${fmtDate(s.data_inizio)} → ${fmtDate(s.data_fine)}</span>
+      <span style="font-size:.82rem;color:var(--text-muted)">${fmtDate(s.data_inizio)} → ${fmtDate(s.data_fine)}</span>
       <span style="font-size:.8rem">${s.pubblicato
         ? '<span style="color:#2e7d32">✅ Pubblicato</span>'
         : '<span style="color:#aaa">⏸ Bozza</span>'}</span>
@@ -322,16 +328,21 @@ async function renderCounters() {
   const map = {};
   (counters || []).forEach(c => map[c.nome] = c.turni_fatti);
   let html = '<table style="width:100%;font-size:.85rem;border-collapse:collapse">';
-  html += '<tr><th style="text-align:left;padding:.3rem .5rem;border-bottom:2px solid #eee">Turnista</th><th style="padding:.3rem;border-bottom:2px solid #eee">Dovuti</th><th style="padding:.3rem;border-bottom:2px solid #eee">Fatti</th><th style="padding:.3rem;border-bottom:2px solid #eee">Delta</th></tr>';
+  html += `<tr>
+    <th style="text-align:left;padding:.3rem .5rem;border-bottom:2px solid var(--border);color:var(--text)">Turnista</th>
+    <th style="padding:.3rem;border-bottom:2px solid var(--border);color:var(--text)">Dovuti</th>
+    <th style="padding:.3rem;border-bottom:2px solid var(--border);color:var(--text)">Fatti</th>
+    <th style="padding:.3rem;border-bottom:2px solid var(--border);color:var(--text)">Delta</th>
+  </tr>`;
   wsTurnisti.forEach(t => {
     const fatti = map[t.nome] || 0;
     const delta = fatti - t.turni_dovuti_per_slot;
     const color = delta >= 0 ? '#2e7d32' : '#c62828';
     html += `<tr>
-      <td style="padding:.3rem .5rem;border-bottom:1px solid #f0f0f0">${t.nome}</td>
-      <td style="padding:.3rem;text-align:center;border-bottom:1px solid #f0f0f0">${t.turni_dovuti_per_slot}</td>
-      <td style="padding:.3rem;text-align:center;border-bottom:1px solid #f0f0f0">${fatti}</td>
-      <td style="padding:.3rem;text-align:center;color:${color};font-weight:700;border-bottom:1px solid #f0f0f0">${delta >= 0 ? '+' : ''}${delta}</td>
+      <td style="padding:.3rem .5rem;border-bottom:1px solid var(--border);color:var(--text)">${t.nome}</td>
+      <td style="padding:.3rem;text-align:center;border-bottom:1px solid var(--border);color:var(--text)">${t.turni_dovuti_per_slot}</td>
+      <td style="padding:.3rem;text-align:center;border-bottom:1px solid var(--border);color:var(--text)">${fatti}</td>
+      <td style="padding:.3rem;text-align:center;color:${color};font-weight:700;border-bottom:1px solid var(--border)">${delta >= 0 ? '+' : ''}${delta}</td>
     </tr>`;
   });
   html += '</table>';
@@ -426,12 +437,12 @@ async function loadTurnisti() {
   div.innerHTML = '';
   data.forEach(t => {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:.8rem;padding:.5rem 0;border-bottom:1px solid #f0f0f0';
+    row.style.cssText = 'display:flex;align-items:center;gap:.8rem;padding:.5rem 0;border-bottom:1px solid var(--border)';
     row.innerHTML = `
-      <span style="flex:1;font-weight:600">${t.nome}</span>
-      <span style="font-size:.82rem;color:#666">Turni/slot:</span>
+      <span style="flex:1;font-weight:600;color:var(--text)">${t.nome}</span>
+      <span style="font-size:.82rem;color:var(--text-muted)">Turni/slot:</span>
       <input type="number" value="${t.turni_dovuti_per_slot}" min="1"
-        style="width:60px;padding:.3rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.85rem"
+        style="width:60px;padding:.3rem .5rem;border:1px solid var(--border);border-radius:6px;font-size:.85rem;background:var(--bg-card);color:var(--text)"
         onchange="updateTurniDovuti('${t.id}', this.value)">
       <button class="btn btn-danger btn-sm" onclick="deleteTurnista('${t.id}','${t.nome}')">Rimuovi</button>
     `;
@@ -469,7 +480,6 @@ function initAdmin() {
   loadTurnisti();
 }
 
-// Auto-login se sessione attiva
 if (localStorage.getItem('ps_admin_auth') === '1') {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('admin-app').style.display = '';

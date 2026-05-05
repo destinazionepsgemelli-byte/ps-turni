@@ -12,17 +12,23 @@ function showToast(msg, type = '') {
 }
 
 function fmtDate(d) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('it-IT', {
+  const [y, m, day] = d.split('-');
+  return new Date(y, m - 1, day).toLocaleDateString('it-IT', {
     weekday: 'short', day: '2-digit', month: 'short'
   });
 }
 
 function dateRange(start, end) {
   const dates = [];
-  const cur = new Date(start + 'T00:00:00');
-  const fin = new Date(end + 'T00:00:00');
+  const [sy, sm, sd] = start.split('-');
+  const [ey, em, ed] = end.split('-');
+  const cur = new Date(sy, sm - 1, sd);
+  const fin = new Date(ey, em - 1, ed);
   while (cur <= fin) {
-    dates.push(cur.toISOString().slice(0, 10));
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const d = String(cur.getDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${d}`);
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
