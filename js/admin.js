@@ -7,7 +7,7 @@ document.getElementById('login-pw').addEventListener('keydown', e => {
 function doLogin() {
   const pw = document.getElementById('login-pw').value;
   if (pw === ADMIN_PASSWORD) {
-    sessionStorage.setItem('ps_admin_auth', '1');
+    localStorage.setItem('ps_admin_auth', '1');
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('admin-app').style.display = '';
     initAdmin();
@@ -17,7 +17,7 @@ function doLogin() {
 }
 
 document.getElementById('logout-btn').addEventListener('click', () => {
-  sessionStorage.removeItem('ps_admin_auth');
+  localStorage.removeItem('ps_admin_auth');
   document.getElementById('admin-app').style.display = 'none';
   document.getElementById('login-screen').style.display = '';
   document.getElementById('login-pw').value = '';
@@ -470,7 +470,7 @@ function initAdmin() {
 }
 
 // Auto-login se sessione attiva
-if (sessionStorage.getItem('ps_admin_auth') === '1') {
+if (localStorage.getItem('ps_admin_auth') === '1') {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('admin-app').style.display = '';
   initAdmin();
