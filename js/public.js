@@ -49,7 +49,7 @@ function openConfirmDelete(pref) {
 
 async function loadActiveSlot() {
   const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('slots')
     .select('*')
     .eq('pubblicato', true)
@@ -83,7 +83,7 @@ async function loadActiveSlot() {
 
 async function buildTable() {
   const dates = dateRange(currentSlot.data_inizio, currentSlot.data_fine);
-  const { data: prefs } = await supabase
+  const { data: prefs } = await _supabase
     .from('preferenze')
     .select('*')
     .eq('slot_id', currentSlot.id);
@@ -155,7 +155,7 @@ async function doInsert() {
   const nomeB = document.getElementById('modal-nome-b').value.trim() || null;
   if (!nomeA) { showToast('Inserisci almeno il tuo nome', 'error'); return; }
 
-  const { error } = await __supabase.from('preferenze').insert({
+  const { error } = await _supabase.from('preferenze').insert({
     slot_id: currentSlot.id,
     giorno: pendingInsert.giorno,
     tipo: pendingInsert.tipo,
@@ -169,7 +169,7 @@ async function doInsert() {
 }
 
 async function doDelete() {
-  const { error } = await supabase
+  const { error } = await _supabase
     .from('preferenze')
     .delete()
     .eq('id', pendingDelete.id);
