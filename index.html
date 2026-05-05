@@ -2,6 +2,10 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
+  <script>
+    if (localStorage.getItem('ps_theme') === 'dark')
+      document.documentElement.classList.add('dark-mode');
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Destinazione PS – Preferenze Turni</title>
   <link rel="stylesheet" href="css/style.css">
@@ -15,7 +19,7 @@
     <h1>Destinazione PS – Preferenze Turni</h1>
     <div class="subtitle">Inserisci le tue desiderata e indisponibilità</div>
   </div>
-<div style="margin-left:auto;display:flex;align-items:center;gap:1rem">
+  <div style="margin-left:auto;display:flex;align-items:center;gap:1rem">
     <span style="font-size:.8rem;opacity:.7"><span class="live-dot"></span>Live</span>
     <button class="btn btn-secondary btn-sm" id="theme-toggle">🌙 Scuro</button>
     <a href="admin.html" class="btn btn-secondary btn-sm">🔧 Admin</a>
@@ -72,7 +76,6 @@
   </div>
 </div>
 
-<!-- MODAL inserimento nome -->
 <div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal-box">
     <h3 id="modal-title">Inserisci la tua preferenza</h3>
@@ -91,11 +94,10 @@
   </div>
 </div>
 
-<!-- MODAL conferma cancellazione -->
 <div class="modal-overlay hidden" id="confirm-overlay">
   <div class="modal-box">
     <h3>Conferma cancellazione</h3>
-    <p id="confirm-text" style="margin-bottom:1.2rem;color:#555;font-size:.9rem"></p>
+    <p id="confirm-text" style="margin-bottom:1.2rem;font-size:.9rem"></p>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="confirm-cancel">Annulla</button>
       <button class="btn btn-danger" id="confirm-ok">Elimina</button>
@@ -109,13 +111,10 @@
 <script src="js/public.js"></script>
 <script>
   const themeBtn = document.getElementById('theme-toggle');
-  if (localStorage.getItem('ps_theme') === 'dark') {
-    document.body.classList.add('dark-mode');
-    themeBtn.textContent = '☀️ Chiaro';
-  }
+  if (localStorage.getItem('ps_theme') === 'dark') themeBtn.textContent = '☀️ Chiaro';
   themeBtn.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
+    document.documentElement.classList.toggle('dark-mode');
+    const isDark = document.documentElement.classList.contains('dark-mode');
     themeBtn.textContent = isDark ? '☀️ Chiaro' : '🌙 Scuro';
     localStorage.setItem('ps_theme', isDark ? 'dark' : 'light');
   });

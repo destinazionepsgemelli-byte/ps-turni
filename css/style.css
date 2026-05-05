@@ -10,7 +10,7 @@
   --shadow: rgba(90,70,20,.10);
 }
 
-body.dark-mode {
+html.dark-mode {
   --bg: #1e1e2e;
   --bg-card: #27273a;
   --text: #e0e0f0;
@@ -61,18 +61,10 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 
 /* ========== BADGE ========== */
 .badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: .8rem;
-  font-weight: 600;
-  background: #e8f4fd;
-  color: #1565c0;
-  border: 1px solid #90caf9;
-  margin: 2px;
-  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 20px; font-size: .8rem; font-weight: 600;
+  background: #e8f4fd; color: #1565c0; border: 1px solid #90caf9;
+  margin: 2px; white-space: nowrap;
 }
 .badge.coppia { background: #fff3e0; color: #e65100; border-color: #ffb74d; }
 .badge .badge-x {
@@ -84,24 +76,15 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 /* ========== TABELLA CALENDARIO ========== */
 .cal-table { width: 100%; border-collapse: collapse; }
 .cal-table th {
-  background: #16213e;
-  color: white;
-  padding: .6rem .8rem;
-  text-align: left;
-  font-size: .85rem;
-  position: sticky;
-  top: 0;
-  z-index: 2;
+  background: #16213e; color: white; padding: .6rem .8rem;
+  text-align: left; font-size: .85rem; position: sticky; top: 0; z-index: 2;
 }
 .cal-table td {
-  padding: .5rem .8rem;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-  font-size: .85rem;
-  color: var(--text);
+  padding: .5rem .8rem; border-bottom: 1px solid var(--border);
+  vertical-align: top; font-size: .85rem; color: var(--text);
 }
 .cal-table tr:nth-child(even) td { background: color-mix(in srgb, var(--bg) 60%, var(--bg-card)); }
-.cal-table tr:hover td { background: color-mix(in srgb, var(--bg) 40%, var(--bg-card)); }
+.cal-table tr:hover td { background: color-mix(in srgb, var(--bg) 30%, var(--bg-card)); }
 
 .col-data { width: 110px; font-weight: 600; white-space: nowrap; }
 .col-desiderata { background: #f0fdf4 !important; border-left: 3px solid #4caf50; }
@@ -110,26 +93,25 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 .col-header-red { background: #c62828 !important; }
 
 .add-btn {
-  background: none; border: 1.5px dashed #bbb; border-radius: 50%;
-  width: 26px; height: 26px; font-size: 1.1rem; cursor: pointer; color: #888;
+  background: none; border: 1.5px dashed var(--border); border-radius: 50%;
+  width: 26px; height: 26px; font-size: 1.1rem; cursor: pointer; color: var(--text-muted);
   transition: all .15s; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.add-btn:hover { border-color: #555; color: #333; transform: scale(1.1); }
+.add-btn:hover { border-color: var(--text); color: var(--text); transform: scale(1.1); }
 .cell-inner { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 2px; }
 
 /* ========== MODAL ========== */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  position: fixed; inset: 0; background: rgba(0,0,0,.5);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000; animation: fadeIn .15s ease;
 }
 .modal-overlay.hidden { display: none; }
 .modal-box {
-  background: var(--bg-card);
-  color: var(--text);
-  border-radius: 14px; padding: 1.5rem;
-  min-width: 300px; max-width: 90vw;
-  box-shadow: 0 8px 32px rgba(0,0,0,.2); animation: slideUp .2s ease;
+  background: var(--bg-card); color: var(--text);
+  border-radius: 14px; padding: 1.5rem; min-width: 300px; max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,.3); animation: slideUp .2s ease;
+  border: 1px solid var(--border);
 }
 .modal-box h3 { margin-bottom: 1rem; font-size: 1rem; color: var(--text); }
 
@@ -137,10 +119,9 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 @keyframes slideUp { from { transform:translateY(20px); opacity:0 } to { transform:translateY(0); opacity:1 } }
 
 .modal-box input {
-  width: 100%; padding: .55rem .8rem;
-  border: 1.5px solid var(--border); border-radius: 8px; font-size: .95rem;
-  margin-bottom: .8rem; transition: border-color .15s;
-  background: var(--bg); color: var(--text);
+  width: 100%; padding: .55rem .8rem; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: .95rem; margin-bottom: .8rem;
+  background: var(--bg); color: var(--text); transition: border-color .15s;
 }
 .modal-box input:focus { outline: none; border-color: #1565c0; }
 .modal-box label { font-size: .82rem; color: var(--text-muted); display: block; margin-bottom: 3px; }
@@ -177,9 +158,8 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 /* ========== SLOT INFO BAR ========== */
 .slot-info-bar {
   background: linear-gradient(90deg, var(--header-bg2), var(--header-bg1));
-  color: white; border-radius: 10px; padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem; display: flex; flex-wrap: wrap;
-  gap: 1rem; align-items: center; justify-content: space-between;
+  color: white; border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1.5rem;
+  display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;
 }
 .slot-info-bar .info-item { font-size: .9rem; }
 .slot-info-bar .info-item strong { display: block; font-size: 1rem; }
@@ -192,9 +172,9 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
   border-bottom: 2px solid var(--border); padding-bottom: .5rem;
 }
 .nav-tab {
-  padding: .5rem 1.2rem; border-radius: 8px 8px 0 0;
-  cursor: pointer; font-weight: 600; font-size: .9rem;
-  border: none; background: var(--border); color: var(--text-muted); transition: all .15s;
+  padding: .5rem 1.2rem; border-radius: 8px 8px 0 0; cursor: pointer;
+  font-weight: 600; font-size: .9rem; border: none;
+  background: var(--border); color: var(--text-muted); transition: all .15s;
 }
 .nav-tab.active { background: #1565c0; color: white; }
 
@@ -205,9 +185,8 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 .form-group { margin-bottom: 1rem; }
 .form-group label { display: block; font-size: .85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
 .form-group input, .form-group select {
-  width: 100%; padding: .55rem .8rem;
-  border: 1.5px solid var(--border); border-radius: 8px; font-size: .9rem;
-  background: var(--bg-card); color: var(--text);
+  width: 100%; padding: .55rem .8rem; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: .9rem; background: var(--bg-card); color: var(--text);
 }
 
 /* ========== WORKSPACE ========== */
@@ -220,9 +199,8 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 
 /* ========== LIVE DOT ========== */
 .live-dot {
-  display: inline-block; width: 8px; height: 8px;
-  border-radius: 50%; background: #4caf50;
-  animation: pulse 2s infinite; margin-right: 6px;
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #4caf50; animation: pulse 2s infinite; margin-right: 6px;
 }
 @keyframes pulse {
   0%, 100% { opacity:1; transform:scale(1); }

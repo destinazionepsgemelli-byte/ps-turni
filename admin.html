@@ -2,6 +2,10 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
+  <script>
+    if (localStorage.getItem('ps_theme') === 'dark')
+      document.documentElement.classList.add('dark-mode');
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin – Destinazione PS Turni</title>
   <link rel="stylesheet" href="css/style.css">
@@ -15,7 +19,7 @@
     <h2 style="text-align:center;margin-bottom:1.5rem">Accesso Amministratore</h2>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="login-pw" placeholder="••••••••" style="width:100%;padding:.6rem .9rem;border:1.5px solid #ddd;border-radius:8px;font-size:1rem;margin-top:4px">
+      <input type="password" id="login-pw" placeholder="••••••••">
     </div>
     <button class="btn btn-primary" style="width:100%;margin-top:.5rem" id="login-btn">Accedi</button>
     <p id="login-error" style="color:#c62828;font-size:.85rem;margin-top:.5rem;text-align:center;display:none">Password errata</p>
@@ -29,9 +33,11 @@
     <h1>Admin – Destinazione PS Turni</h1>
     <div class="subtitle">Pannello di amministrazione</div>
   </div>
-<a href="index.html" target="_blank" class="btn btn-secondary btn-sm">🌐 Pagina pubblica</a>
-<button class="btn btn-secondary btn-sm" id="theme-toggle">🌙 Scuro</button>
-<button class="btn btn-secondary btn-sm" id="logout-btn">Esci</button>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:.5rem">
+    <a href="index.html" target="_blank" class="btn btn-secondary btn-sm">🌐 Pubblica</a>
+    <button class="btn btn-secondary btn-sm" id="theme-toggle">🌙 Scuro</button>
+    <button class="btn btn-secondary btn-sm" id="logout-btn">Esci</button>
+  </div>
 </header>
 
 <div class="container">
@@ -41,7 +47,6 @@
     <button class="nav-tab" data-tab="turnisti">👥 Turnisti</button>
   </div>
 
-  <!-- TAB IMPOSTAZIONI -->
   <div id="tab-impostazioni">
     <div class="card">
       <h2>Crea nuovo slot</h2>
@@ -71,11 +76,10 @@
     </div>
   </div>
 
-  <!-- TAB WORKSPACE -->
   <div id="tab-workspace" style="display:none">
     <div class="card">
       <h2>Seleziona slot da gestire</h2>
-      <select id="ws-slot-select" style="padding:.5rem .8rem;border-radius:8px;border:1.5px solid #ddd;font-size:.9rem;min-width:250px">
+      <select id="ws-slot-select" style="padding:.5rem .8rem;border-radius:8px;border:1.5px solid var(--border);font-size:.9rem;min-width:250px;background:var(--bg-card);color:var(--text)">
         <option value="">— Seleziona —</option>
       </select>
       <button class="btn btn-primary btn-sm" style="margin-left:.8rem" id="ws-load-btn">Carica</button>
@@ -91,7 +95,7 @@
         </div>
         <div>
           <div class="card" style="padding:0;overflow:hidden">
-            <div style="padding:1rem 1.5rem;display:flex;align-items:center;gap:.8rem;border-bottom:1px solid #eee">
+            <div style="padding:1rem 1.5rem;display:flex;align-items:center;gap:.8rem;border-bottom:1px solid var(--border)">
               <h2 style="margin:0">📅 Calendario Turni</h2>
               <button class="btn btn-primary btn-sm" id="auto-assign-btn">⚡ Auto-assegna</button>
               <button class="btn btn-success btn-sm" id="pubblica-cal-btn">✅ Pubblica</button>
@@ -124,13 +128,12 @@
     </div>
   </div>
 
-  <!-- TAB TURNISTI -->
   <div id="tab-turnisti" style="display:none">
     <div class="card">
       <h2>Aggiungi turnista</h2>
       <div style="display:flex;gap:.8rem;flex-wrap:wrap">
-        <input type="text" id="t-nome" placeholder="Nome e Cognome" style="padding:.55rem .8rem;border:1.5px solid #ddd;border-radius:8px;font-size:.9rem;flex:1;min-width:200px">
-        <input type="number" id="t-turni" value="1" min="1" style="padding:.55rem .8rem;border:1.5px solid #ddd;border-radius:8px;font-size:.9rem;width:100px" title="Turni dovuti per slot">
+        <input type="text" id="t-nome" placeholder="Nome e Cognome" style="padding:.55rem .8rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;flex:1;min-width:200px;background:var(--bg-card);color:var(--text)">
+        <input type="number" id="t-turni" value="1" min="1" style="padding:.55rem .8rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;width:100px;background:var(--bg-card);color:var(--text)">
         <button class="btn btn-primary" id="add-turnista-btn">Aggiungi</button>
       </div>
     </div>
@@ -143,11 +146,10 @@
 </div>
 </div>
 
-<!-- MODAL conferma -->
 <div class="modal-overlay hidden" id="admin-confirm-overlay">
   <div class="modal-box">
     <h3 id="admin-confirm-title">Conferma</h3>
-    <p id="admin-confirm-text" style="margin-bottom:1.2rem;color:#555;font-size:.9rem"></p>
+    <p id="admin-confirm-text" style="margin-bottom:1.2rem;font-size:.9rem"></p>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="admin-confirm-no">Annulla</button>
       <button class="btn btn-danger" id="admin-confirm-yes">Conferma</button>
@@ -160,13 +162,10 @@
 <script src="js/admin.js"></script>
 <script>
   const themeBtn = document.getElementById('theme-toggle');
-  if (localStorage.getItem('ps_theme') === 'dark') {
-    document.body.classList.add('dark-mode');
-    themeBtn.textContent = '☀️ Chiaro';
-  }
+  if (localStorage.getItem('ps_theme') === 'dark') themeBtn.textContent = '☀️ Chiaro';
   themeBtn.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
+    document.documentElement.classList.toggle('dark-mode');
+    const isDark = document.documentElement.classList.contains('dark-mode');
     themeBtn.textContent = isDark ? '☀️ Chiaro' : '🌙 Scuro';
     localStorage.setItem('ps_theme', isDark ? 'dark' : 'light');
   });
