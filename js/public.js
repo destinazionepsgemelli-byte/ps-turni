@@ -1,7 +1,7 @@
-let currentSlot = null;
+let turnistiList = [];
 let pendingInsert = null;
 let pendingDelete = null;
-let turnistiList = [];
+let currentInsertSlot = null;
 
 function showToast(msg, type = '') {
   const c = document.getElementById('toast-container');
@@ -35,47 +35,38 @@ function dateRange(start, end) {
   return dates;
 }
 
-function isSlotClosed() {
+function isSlotClosed(slot) {
   const today = new Date().toISOString().slice(0, 10);
-  return currentSlot?.data_chiusura_richieste && today > currentSlot.data_chiusura_richieste;
-}
-
-function updateStatoBadge() {
-  if (!currentSlot) return;
-  const chiuso = isSlotClosed();
-  const statoEl = document.getElementById('slot-stato');
-  statoEl.textContent = chiuso ? '🔒 Chiuso' : '✅ Aperto';
-  statoEl.className = chiuso ? 'stato-chiuso' : 'stato-aperto';
+  return slot?.data_chiusura_richieste && today > slot.data_chiusura_richieste;
 }
 
 async function loadTurnisti() {
-  const { data, error } = await _supabase
-    .from('turnisti')
-    .select('nome')
-    .eq('attivo', true)
-    .order('nome');
+  const { data } = await _supabase
+    .from('turnisti').select('nome').eq('attivo', true).order('nome');
   turnistiList = (data || []).map(t => t.nome);
+}
+
+// ---- AUTOCOMPLETE ----
+function validateModal() {
+  const nomeA = document.getElementById('modal-nome-a').value.trim();
+  const nomeB = document.getElementById('modal-nome-b').value.trim();
+  const nomeAValido = turnistiList.includes(nomeA);
+  const nomeBValido = nomeB === '' || turnistiList.includes(nomeB);
+  const ok = nomeAValido && nomeBValido && (nomeA !== nomeB || nomeB === '');
+  document.getElementById('modal-ok').disabled = !ok;
+  document.getElementById('modal-ok').style.opacity = ok ? '1' : '.4';
 }
 
 function setupAutocomplete(inputId, suggestionsId, otherInputId) {
   const input = document.getElementById(inputId);
   const box = document.getElementById(suggestionsId);
-
   input.addEventListener('input', () => {
     const val = input.value.trim().toLowerCase();
     box.innerHTML = '';
     if (!val) { box.style.display = 'none'; validateModal(); return; }
-
-    const otherVal = otherInputId
-      ? document.getElementById(otherInputId).value.trim()
-      : '';
-
-    const filtered = turnistiList.filter(n =>
-      n.toLowerCase().includes(val) && n !== otherVal
-    );
-
+    const otherVal = otherInputId ? document.getElementById(otherInputId).value.trim() : '';
+    const filtered = turnistiList.filter(n => n.toLowerCase().includes(val) && n !== otherVal);
     if (!filtered.length) { box.style.display = 'none'; validateModal(); return; }
-
     filtered.forEach(nome => {
       const item = document.createElement('div');
       item.className = 'autocomplete-item';
@@ -90,142 +81,41 @@ function setupAutocomplete(inputId, suggestionsId, otherInputId) {
     });
     box.style.display = 'block';
   });
-
-  input.addEventListener('blur', () => {
-    setTimeout(() => { box.style.display = 'none'; }, 150);
-    validateModal();
-  });
-
-  input.addEventListener('focus', () => {
-    if (input.value.trim()) input.dispatchEvent(new Event('input'));
-  });
+  input.addEventListener('blur', () => { setTimeout(() => { box.style.display = 'none'; }, 150); validateModal(); });
+  input.addEventListener('focus', () => { if (input.value.trim()) input.dispatchEvent(new Event('input')); });
 }
 
-function validateModal() {
-  const nomeA = document.getElementById('modal-nome-a').value.trim();
-  const nomeB = document.getElementById('modal-nome-b').value.trim();
-  const nomeAValido = turnistiList.includes(nomeA);
-  const nomeBValido = nomeB === '' || turnistiList.includes(nomeB);
-  const ok = nomeAValido && nomeBValido && (nomeA !== nomeB || nomeB === '');
-  document.getElementById('modal-ok').disabled = !ok;
-  document.getElementById('modal-ok').style.opacity = ok ? '1' : '.4';
-}
-
-function renderBadge(pref) {
+// ---- BADGE ----
+function renderBadge(pref, slot) {
   const isCoppia = !!pref.nome_b;
   const label = isCoppia ? `${pref.nome_a} + ${pref.nome_b}` : pref.nome_a;
-  const div = document.createElement('span');
-  div.className = 'badge' + (isCoppia ? ' coppia' : '');
-  div.dataset.id = pref.id;
-  div.innerHTML = `${label}<button class="badge-x" title="Rimuovi">✕</button>`;
-  div.querySelector('.badge-x').addEventListener('click', () => openConfirmDelete(pref));
-  return div;
+  const span = document.createElement('span');
+  span.className = 'badge' + (isCoppia ? ' coppia' : '');
+  span.dataset.id = pref.id;
+  span.innerHTML = `${label}<button class="badge-x" title="Rimuovi">✕</button>`;
+  span.querySelector('.badge-x').addEventListener('click', () => openConfirmDelete(pref, slot));
+  return span;
 }
 
-function openConfirmDelete(pref) {
-  if (isSlotClosed()) { showToast('Le richieste sono chiuse', 'error'); return; }
+function openConfirmDelete(pref, slot) {
+  if (isSlotClosed(slot)) { showToast('Le richieste sono chiuse', 'error'); return; }
   const label = pref.nome_b ? `${pref.nome_a} + ${pref.nome_b}` : pref.nome_a;
   pendingDelete = { id: pref.id, label };
-  document.getElementById('confirm-text').textContent =
-    `Vuoi rimuovere "${label}" da questa riga?`;
+  document.getElementById('confirm-text').textContent = `Vuoi rimuovere "${label}" da questa riga?`;
   document.getElementById('confirm-overlay').classList.remove('hidden');
 }
 
-async function loadActiveSlot() {
-  const { data, error } = await _supabase
-    .from('slots')
-    .select('*')
-    .eq('pubblicato', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (error || !data) {
-    document.getElementById('no-slot').style.display = '';
-    document.getElementById('slot-container').style.display = 'none';
-    return;
-  }
-
-  currentSlot = data;
-  document.getElementById('no-slot').style.display = 'none';
-  document.getElementById('slot-container').style.display = '';
-  document.getElementById('slot-nome').textContent = data.nome;
-  document.getElementById('slot-periodo').textContent =
-    `${fmtDate(data.data_inizio)} → ${fmtDate(data.data_fine)}`;
-  document.getElementById('slot-chiusura').textContent =
-    data.data_chiusura_richieste ? fmtDate(data.data_chiusura_richieste) : '—';
-
-  updateStatoBadge();
-  // Aggiorna il badge ogni minuto senza ricaricare la pagina
-  setInterval(updateStatoBadge, 60000);
-
-  await buildTable();
-  subscribeRealtime();
-}
-
-async function buildTable() {
-  const dates = dateRange(currentSlot.data_inizio, currentSlot.data_fine);
-  const { data: prefs } = await _supabase
-    .from('preferenze')
-    .select('*')
-    .eq('slot_id', currentSlot.id);
-
-  const byKey = {};
-  (prefs || []).forEach(p => {
-    const k = `${p.giorno}|${p.tipo}`;
-    if (!byKey[k]) byKey[k] = [];
-    byKey[k].push(p);
-  });
-
-  const tbody = document.getElementById('cal-body');
-  tbody.innerHTML = '';
-
-  for (const d of dates) {
-    const tr = document.createElement('tr');
-
-    const tdData = document.createElement('td');
-    tdData.className = 'col-data';
-    tdData.textContent = fmtDate(d);
-    tr.appendChild(tdData);
-
-    for (const tipo of ['desiderata', 'indisponibilita']) {
-      const td = document.createElement('td');
-      td.className = tipo === 'desiderata' ? 'col-desiderata' : 'col-indisponibilita';
-      td.dataset.giorno = d;
-      td.dataset.tipo = tipo;
-
-      const inner = document.createElement('div');
-      inner.className = 'cell-inner';
-      inner.id = `cell-${d}-${tipo}`;
-
-      (byKey[`${d}|${tipo}`] || []).forEach(p => inner.appendChild(renderBadge(p)));
-
-      const addBtn = document.createElement('button');
-      addBtn.className = 'add-btn';
-      addBtn.title = 'Aggiungi';
-      addBtn.textContent = '+';
-      addBtn.addEventListener('click', () => openInsertModal(d, tipo));
-      inner.appendChild(addBtn);
-
-      td.appendChild(inner);
-      tr.appendChild(td);
-    }
-
-    tbody.appendChild(tr);
-  }
-}
-
-function openInsertModal(giorno, tipo) {
-  if (isSlotClosed()) { showToast('Le richieste sono chiuse', 'error'); return; }
+// ---- MODAL INSERIMENTO ----
+function openInsertModal(giorno, tipo, slot) {
+  if (isSlotClosed(slot)) { showToast('Le richieste sono chiuse', 'error'); return; }
+  currentInsertSlot = slot;
   pendingInsert = { giorno, tipo };
   document.getElementById('modal-nome-a').value = '';
   document.getElementById('modal-nome-b').value = '';
   document.getElementById('modal-ok').disabled = true;
   document.getElementById('modal-ok').style.opacity = '.4';
   document.getElementById('modal-title').textContent =
-    tipo === 'desiderata'
-      ? `🟢 Desiderata – ${fmtDate(giorno)}`
-      : `🔴 Indisponibilità – ${fmtDate(giorno)}`;
+    tipo === 'desiderata' ? `🟢 Desiderata – ${fmtDate(giorno)}` : `🔴 Indisponibilità – ${fmtDate(giorno)}`;
   document.getElementById('modal-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('modal-nome-a').focus(), 50);
 }
@@ -235,15 +125,13 @@ async function doInsert() {
   const nomeB = document.getElementById('modal-nome-b').value.trim() || null;
   if (!turnistiList.includes(nomeA)) return;
   if (nomeB && !turnistiList.includes(nomeB)) return;
-
   const { error } = await _supabase.from('preferenze').insert({
-    slot_id: currentSlot.id,
+    slot_id: currentInsertSlot.id,
     giorno: pendingInsert.giorno,
     tipo: pendingInsert.tipo,
     nome_a: nomeA,
     nome_b: nomeB
   });
-
   document.getElementById('modal-overlay').classList.add('hidden');
   if (error) { showToast('Errore: ' + error.message, 'error'); return; }
   showToast('Inserito!', 'success');
@@ -252,48 +140,256 @@ async function doInsert() {
 async function doDelete() {
   const id = pendingDelete.id;
   document.getElementById('confirm-overlay').classList.add('hidden');
-
   const el = document.querySelector(`[data-id="${id}"]`);
   if (el) el.remove();
-
-  const { error } = await _supabase
-    .from('preferenze')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    showToast('Errore: ' + error.message, 'error');
-    await buildTable();
-    return;
-  }
-  showToast('Rimosso', 'success');
+  const { error } = await _supabase.from('preferenze').delete().eq('id', id);
+  if (error) { showToast('Errore: ' + error.message, 'error'); }
+  else showToast('Rimosso', 'success');
 }
 
-function subscribeRealtime() {
+// ---- SEZIONE DESIDERATA ----
+async function buildDesiderataSection(slot) {
+  const dates = dateRange(slot.data_inizio, slot.data_fine);
+  const { data: prefs } = await _supabase.from('preferenze').select('*').eq('slot_id', slot.id);
+  const byKey = {};
+  (prefs || []).forEach(p => {
+    const k = `${p.giorno}|${p.tipo}`;
+    if (!byKey[k]) byKey[k] = [];
+    byKey[k].push(p);
+  });
+
+  const section = document.createElement('div');
+  section.id = `slot-des-${slot.id}`;
+  section.style.marginBottom = '2rem';
+
+  const chiuso = isSlotClosed(slot);
+
+  // Info bar
+  const infoBar = document.createElement('div');
+  infoBar.className = 'slot-info-bar';
+  infoBar.innerHTML = `
+    <div class="info-item">
+      <label style="opacity:.7;font-size:.75rem">SLOT</label>
+      <strong>${slot.nome}</strong>
+    </div>
+    <div class="info-item">
+      <label style="opacity:.7;font-size:.75rem">PERIODO</label>
+      <strong>${fmtDate(slot.data_inizio)} → ${fmtDate(slot.data_fine)}</strong>
+    </div>
+    <div class="info-item">
+      <label style="opacity:.7;font-size:.75rem">CHIUSURA RICHIESTE</label>
+      <strong>${slot.data_chiusura_richieste ? fmtDate(slot.data_chiusura_richieste) : '—'}</strong>
+    </div>
+    <div class="info-item">
+      <label style="opacity:.7;font-size:.75rem">STATO</label>
+      <strong class="${chiuso ? 'stato-chiuso' : 'stato-aperto'}" id="stato-${slot.id}">${chiuso ? '🔒 Chiuso' : '✅ Aperto'}</strong>
+    </div>
+  `;
+  section.appendChild(infoBar);
+
+  // Tabella
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.cssText = 'padding:0;overflow:hidden';
+  const wrap = document.createElement('div');
+  wrap.style.overflowX = 'auto';
+  const table = document.createElement('table');
+  table.className = 'cal-table';
+  table.innerHTML = `<thead><tr>
+    <th class="col-data">Giorno</th>
+    <th class="col-header-green" style="width:45%">🟢 Desiderata <span style="font-weight:400;font-size:.75rem;opacity:.8">– giorni in cui vuoi lavorare</span></th>
+    <th class="col-header-red" style="width:45%">🔴 Indisponibilità <span style="font-weight:400;font-size:.75rem;opacity:.8">– giorni in cui NON puoi lavorare</span></th>
+  </tr></thead>`;
+  const tbody = document.createElement('tbody');
+  tbody.id = `cal-body-${slot.id}`;
+
+  for (const d of dates) {
+    const tr = document.createElement('tr');
+    const tdData = document.createElement('td');
+    tdData.className = 'col-data';
+    tdData.textContent = fmtDate(d);
+    tr.appendChild(tdData);
+
+    for (const tipo of ['desiderata', 'indisponibilita']) {
+      const td = document.createElement('td');
+      td.className = tipo === 'desiderata' ? 'col-desiderata' : 'col-indisponibilita';
+      const inner = document.createElement('div');
+      inner.className = 'cell-inner';
+      inner.id = `cell-${slot.id}-${d}-${tipo}`;
+      (byKey[`${d}|${tipo}`] || []).forEach(p => inner.appendChild(renderBadge(p, slot)));
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-btn';
+      addBtn.textContent = '+';
+      addBtn.addEventListener('click', () => openInsertModal(d, tipo, slot));
+      inner.appendChild(addBtn);
+      td.appendChild(inner);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  card.appendChild(wrap);
+  section.appendChild(card);
+
+  // Polling stato badge
+  setInterval(() => {
+    const el = document.getElementById(`stato-${slot.id}`);
+    if (!el) return;
+    const c = isSlotClosed(slot);
+    el.textContent = c ? '🔒 Chiuso' : '✅ Aperto';
+    el.className = c ? 'stato-chiuso' : 'stato-aperto';
+  }, 60000);
+
+  return section;
+}
+
+// ---- SEZIONE CALENDARIO PUBBLICATO ----
+async function buildCalendarioSection(slot) {
+  const dates = dateRange(slot.data_inizio, slot.data_fine);
+  const { data: assegnazioni } = await _supabase
+    .from('assegnazioni').select('*').eq('slot_id', slot.id);
+  const byGiorno = {};
+  (assegnazioni || []).forEach(a => {
+    if (!byGiorno[a.giorno]) byGiorno[a.giorno] = [];
+    byGiorno[a.giorno].push(a);
+  });
+
+  const section = document.createElement('div');
+  section.id = `slot-cal-${slot.id}`;
+  section.style.marginBottom = '2rem';
+
+  // Info bar
+  const infoBar = document.createElement('div');
+  infoBar.className = 'slot-info-bar';
+  infoBar.innerHTML = `
+    <div class="info-item">
+      <label style="opacity:.7;font-size:.75rem">SLOT</label>
+      <strong>${slot.nome}</strong>
+    </div>
+    <div class="info-item">
+      <label style="opacity:.7;font-size:.75rem">PERIODO</label>
+      <strong>${fmtDate(slot.data_inizio)} → ${fmtDate(slot.data_fine)}</strong>
+    </div>
+    <div class="info-item">
+      <label style="opacity:.7;font-size:.75rem">STATO</label>
+      <strong class="stato-aperto">📋 Calendario pubblicato</strong>
+    </div>
+  `;
+  section.appendChild(infoBar);
+
+  // Tabella assegnazioni (read-only)
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.cssText = 'padding:0;overflow:hidden';
+  const wrap = document.createElement('div');
+  wrap.style.overflowX = 'auto';
+  const table = document.createElement('table');
+  table.className = 'cal-table';
+  table.innerHTML = `<thead><tr>
+    <th class="col-data">Giorno</th>
+    <th>Turno assegnato</th>
+  </tr></thead>`;
+  const tbody = document.createElement('tbody');
+
+  for (const d of dates) {
+    const tr = document.createElement('tr');
+    const tdData = document.createElement('td');
+    tdData.className = 'col-data';
+    tdData.textContent = fmtDate(d);
+    tr.appendChild(tdData);
+    const tdAssegn = document.createElement('td');
+    const assegn = byGiorno[d] || [];
+    if (assegn.length > 0) {
+      assegn.forEach(a => {
+        const label = a.nome_b ? `${a.nome_a} + ${a.nome_b}` : a.nome_a;
+        const badge = document.createElement('span');
+        badge.className = 'badge' + (a.nome_b ? ' coppia' : '');
+        badge.style.pointerEvents = 'none';
+        badge.textContent = label;
+        tdAssegn.appendChild(badge);
+      });
+    } else {
+      tdAssegn.innerHTML = '<span style="color:var(--text-muted);font-size:.8rem">—</span>';
+    }
+    tr.appendChild(tdAssegn);
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  card.appendChild(wrap);
+  section.appendChild(card);
+  return section;
+}
+
+// ---- REALTIME ----
+function subscribeRealtime(slot) {
   _supabase
-    .channel('preferenze-public')
+    .channel(`preferenze-${slot.id}`)
     .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'preferenze',
-      filter: `slot_id=eq.${currentSlot.id}`
-    }, payload => handleRealtimeChange(payload))
+      event: '*', schema: 'public', table: 'preferenze',
+      filter: `slot_id=eq.${slot.id}`
+    }, payload => {
+      if (payload.eventType === 'INSERT') {
+        const p = payload.new;
+        const inner = document.getElementById(`cell-${slot.id}-${p.giorno}-${p.tipo}`);
+        if (!inner) return;
+        const addBtn = inner.querySelector('.add-btn');
+        inner.insertBefore(renderBadge(p, slot), addBtn);
+      } else if (payload.eventType === 'DELETE') {
+        const el = document.querySelector(`[data-id="${payload.old.id}"]`);
+        if (el) el.remove();
+      }
+    })
     .subscribe();
 }
 
-function handleRealtimeChange(payload) {
-  if (payload.eventType === 'INSERT') {
-    const p = payload.new;
-    const inner = document.getElementById(`cell-${p.giorno}-${p.tipo}`);
-    if (!inner) return;
-    const addBtn = inner.querySelector('.add-btn');
-    inner.insertBefore(renderBadge(p), addBtn);
-  } else if (payload.eventType === 'DELETE') {
-    const el = document.querySelector(`[data-id="${payload.old.id}"]`);
-    if (el) el.remove();
+// ---- INIT ----
+async function loadAllSlots() {
+  const { data: slots } = await _supabase
+    .from('slots').select('*').eq('pubblicato', true)
+    .order('data_inizio', { ascending: false });
+
+  const container = document.getElementById('slots-container');
+  container.innerHTML = '';
+
+  if (!slots || slots.length === 0) {
+    document.getElementById('no-slot').style.display = '';
+    return;
+  }
+  document.getElementById('no-slot').style.display = 'none';
+
+  const desiderataSlots = slots.filter(s => !s.calendario_pubblicato);
+  const publishedSlots = slots.filter(s => s.calendario_pubblicato);
+
+  // Slot aperti per desiderata
+  for (const slot of desiderataSlots) {
+    const section = await buildDesiderataSection(slot);
+    container.appendChild(section);
+    subscribeRealtime(slot);
+  }
+
+  // Separatore + calendari pubblicati
+  if (publishedSlots.length > 0) {
+    if (desiderataSlots.length > 0) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'border-top:2px solid var(--border);margin:1rem 0 2rem';
+      container.appendChild(sep);
+    }
+    const heading = document.createElement('h2');
+    heading.style.cssText = 'color:var(--text);font-size:1.05rem;font-weight:700;margin-bottom:1.2rem';
+    heading.textContent = '📋 Calendari definitivi';
+    container.appendChild(heading);
+    for (const slot of publishedSlots) {
+      const section = await buildCalendarioSection(slot);
+      container.appendChild(section);
+    }
   }
 }
 
+// ---- EVENT LISTENERS MODAL ----
 document.getElementById('modal-cancel').addEventListener('click', () =>
   document.getElementById('modal-overlay').classList.add('hidden'));
 document.getElementById('modal-ok').addEventListener('click', doInsert);
@@ -308,7 +404,7 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
     document.getElementById('modal-overlay').classList.add('hidden');
 });
 
-Promise.all([loadTurnisti(), loadActiveSlot()]).then(() => {
+Promise.all([loadTurnisti(), loadAllSlots()]).then(() => {
   setupAutocomplete('modal-nome-a', 'suggestions-a', 'modal-nome-b');
   setupAutocomplete('modal-nome-b', 'suggestions-b', 'modal-nome-a');
 });

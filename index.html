@@ -26,53 +26,13 @@
   </div>
 </header>
 
-<div class="container">
-  <div id="no-slot" class="card" style="text-align:center;padding:3rem;display:none">
+<div class="container" id="slots-container"></div>
+
+<div class="container" id="no-slot" style="display:none">
+  <div class="card" style="text-align:center;padding:3rem">
     <div style="font-size:3rem">📅</div>
     <h2 style="margin-top:1rem;color:#888">Nessun calendario aperto</h2>
     <p style="color:#aaa;margin-top:.5rem">L'amministratore non ha ancora aperto le richieste di preferenza.</p>
-  </div>
-
-  <div id="slot-container" style="display:none">
-    <div class="slot-info-bar">
-      <div class="info-item">
-        <label style="opacity:.7;font-size:.75rem">SLOT</label>
-        <strong id="slot-nome">—</strong>
-      </div>
-      <div class="info-item">
-        <label style="opacity:.7;font-size:.75rem">PERIODO</label>
-        <strong id="slot-periodo">—</strong>
-      </div>
-      <div class="info-item">
-        <label style="opacity:.7;font-size:.75rem">CHIUSURA RICHIESTE</label>
-        <strong id="slot-chiusura">—</strong>
-      </div>
-      <div class="info-item">
-        <label style="opacity:.7;font-size:.75rem">STATO</label>
-        <strong id="slot-stato">—</strong>
-      </div>
-    </div>
-
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="overflow-x:auto">
-        <table class="cal-table" id="cal-table">
-          <thead>
-            <tr>
-              <th class="col-data">Giorno</th>
-              <th class="col-header-green" style="width:45%">
-                🟢 Desiderata
-                <span style="font-weight:400;font-size:.75rem;opacity:.8"> – giorni in cui vuoi lavorare</span>
-              </th>
-              <th class="col-header-red" style="width:45%">
-                🔴 Indisponibilità
-                <span style="font-weight:400;font-size:.75rem;opacity:.8"> – giorni in cui NON puoi lavorare</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody id="cal-body"></tbody>
-        </table>
-      </div>
-    </div>
   </div>
 </div>
 

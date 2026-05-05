@@ -160,13 +160,15 @@ async function loadSlots() {
   data.forEach(s => {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--border);flex-wrap:wrap';
+    const statoLabel = s.calendario_pubblicato
+      ? '<span style="color:#1565c0">📋 Calendario pubblicato</span>'
+      : s.pubblicato
+        ? '<span style="color:#2e7d32">✅ Aperto per desiderata</span>'
+        : '<span style="color:#aaa">⏸ Bozza</span>';
     row.innerHTML = `
       <span style="font-weight:600;flex:1;color:var(--text)">${s.nome}</span>
       <span style="font-size:.82rem;color:var(--text-muted)">${fmtDate(s.data_inizio)} → ${fmtDate(s.data_fine)}</span>
-      <span style="font-size:.8rem">${s.pubblicato
-        ? '<span style="color:#2e7d32">✅ Pubblicato</span>'
-        : '<span style="color:#aaa">⏸ Bozza</span>'}</span>
-      ${!s.pubblicato ? `<button class="btn btn-success btn-sm" onclick="publishSlot('${s.id}')">Pubblica</button>` : ''}
+      <span style="font-size:.8rem">${statoLabel}</span>
       <button class="btn btn-secondary btn-sm" onclick='openEditSlot(${JSON.stringify(s)})'>✏️ Modifica</button>
       <button class="btn btn-danger btn-sm" onclick="deleteSlot('${s.id}','${s.nome.replace(/'/g,"\\'")}')">Elimina</button>
     `;
@@ -195,7 +197,7 @@ document.getElementById('pubblica-slot-btn').addEventListener('click', async () 
     data_chiusura_richieste: chiusura, pubblicato: true
   });
   if (error) { showToast('Errore: ' + error.message, 'error'); return; }
-  showToast('Slot pubblicato!', 'success');
+  showToast('Slot creato e aperto per le desiderata!', 'success');
   document.getElementById('s-nome').value = '';
   document.getElementById('s-inizio').value = '';
   document.getElementById('s-fine').value = '';
