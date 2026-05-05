@@ -84,7 +84,7 @@ let wsTurnisti = [];
 //  TAB IMPOSTAZIONI SLOT
 // =============================================
 async function loadSlots() {
-  const { data } = await supabase.from('slots').select('*').order('created_at', { ascending: false });
+  const { data } = await _supabase.from('slots').select('*').order('created_at', { ascending: false });
   const div = document.getElementById('slots-list');
   if (!data || !data.length) {
     div.innerHTML = '<em style="color:#aaa">Nessuno slot creato</em>';
@@ -123,7 +123,7 @@ document.getElementById('pubblica-slot-btn').addEventListener('click', async () 
   const chiusura = document.getElementById('s-chiusura').value || null;
   if (!nome || !inizio || !fine) { showToast('Compila tutti i campi obbligatori', 'error'); return; }
   if (fine < inizio) { showToast('La data fine deve essere dopo la data inizio', 'error'); return; }
-  const { error } = await supabase.from('slots').insert({
+  const { error } = await _supabase.from('slots').insert({
     nome, data_inizio: inizio, data_fine: fine,
     data_chiusura_richieste: chiusura, pubblicato: true
   });
@@ -137,14 +137,14 @@ document.getElementById('pubblica-slot-btn').addEventListener('click', async () 
 });
 
 async function publishSlot(id) {
-  await supabase.from('slots').update({ pubblicato: true }).eq('id', id);
+  await _supabase.from('slots').update({ pubblicato: true }).eq('id', id);
   showToast('Slot pubblicato!', 'success');
   loadSlots();
 }
 
 function deleteSlot(id, nome) {
   adminConfirm('Elimina slot', `Eliminare "${nome}" e tutte le preferenze associate?`, async () => {
-    await supabase.from('slots').delete().eq('id', id);
+    await _supabase.from('slots').delete().eq('id', id);
     showToast('Slot eliminato');
     loadSlots();
   });
@@ -160,10 +160,10 @@ async function loadWorkspace() {
   if (!id) { showToast('Seleziona uno slot', 'error'); return; }
 
   const [{ data: slot }, { data: prefs }, { data: assegn }, { data: turnisti }] = await Promise.all([
-    supabase.from('slots').select('*').eq('id', id).single(),
-    supabase.from('preferenze').select('*').eq('slot_id', id),
-    supabase.from('assegnazioni').select('*').eq('slot_id', id),
-    supabase.from('turnisti').select('*').eq('attivo', true)
+    _supabase.from('slots').select('*').eq('id', id).single(),
+    _supabase.from('preferenze').select('*').eq('slot_id', id),
+    _supabase.from('assegnazioni').select('*').eq('slot_id', id),
+    _supabase.from('turnisti').select('*').eq('attivo', true)
   ]);
 
   wsSlot = slot;
@@ -247,7 +247,7 @@ async function handleDrop(nomeA, giornoTarget, fromGiorno) {
   if (fromGiorno === giornoTarget) return;
   const existing = wsAssegnazioni.find(a => a.giorno === fromGiorno && a.nome_a === nomeA);
   if (existing) {
-    const { error } = await supabase.from('assegnazioni').update({ giorno: giornoTarget }).eq('id', existing.id);
+    const { error } = await _supabase.from('assegnazioni').update({ giorno: giornoTarget }).eq('id', existing.id);
     if (!error) {
       existing.giorno = giornoTarget;
       renderWsCalendar();
@@ -261,7 +261,7 @@ async function handleDrop(nomeA, giornoTarget, fromGiorno) {
 }
 
 async function insertAssign(giorno, nomeA, nomeB) {
-  const { data, error } = await supabase.from('assegnazioni').insert({
+  const { data, error } = await _supabase.from('assegnazioni').insert({
     slot_id: wsSlot.id, giorno, nome_a: nomeA, nome_b: nomeB || null
   }).select().single();
   if (error) { showToast('Errore: ' + error.message, 'error'); return; }
@@ -276,7 +276,7 @@ async function removeAssign(a) {
   adminConfirm('Rimuovi assegnazione',
     `Rimuovere ${a.nome_b ? a.nome_a + ' + ' + a.nome_b : a.nome_a} dal ${fmtDate(a.giorno)}?`,
     async () => {
-      await supabase.from('assegnazioni').delete().eq('id', a.id);
+      await _supabase.from('assegnazioni').delete().eq('id', a.id);
       wsAssegnazioni = wsAssegnazioni.filter(x => x.id !== a.id);
       renderWsCalendar();
       renderUnassigned();
@@ -315,7 +315,7 @@ function renderUnassigned() {
 
 async function renderCounters() {
   const div = document.getElementById('turni-counters');
-  const { data: counters } = await supabase.from('turni_contatore')
+  const { data: counters } = await _supabase.from('turni_contatore')
     .select('*').eq('slot_id', wsSlot.id);
   const map = {};
   (counters || []).forEach(c => map[c.nome] = c.turni_fatti);
@@ -339,13 +339,13 @@ async function renderCounters() {
 async function aggiornaContatore(nomeA, nomeB) {
   const valore = nomeB ? 0.5 : 1;
   for (const nome of [nomeA, nomeB].filter(Boolean)) {
-    const { data: existing } = await supabase.from('turni_contatore')
+    const { data: existing } = await _supabase.from('turni_contatore')
       .select('*').eq('slot_id', wsSlot.id).eq('nome', nome).single();
     if (existing) {
-      await supabase.from('turni_contatore')
+      await _supabase.from('turni_contatore')
         .update({ turni_fatti: existing.turni_fatti + valore }).eq('id', existing.id);
     } else {
-      await supabase.from('turni_contatore').insert({
+      await _supabase.from('turni_contatore').insert({
         slot_id: wsSlot.id, nome, turni_fatti: valore
       });
     }
@@ -408,7 +408,7 @@ document.getElementById('pubblica-cal-btn').addEventListener('click', () => {
   adminConfirm('Pubblica calendario',
     'Il calendario sarà visibile al pubblico. Continuare?',
     async () => {
-      await supabase.from('slots').update({ calendario_pubblicato: true }).eq('id', wsSlot.id);
+      await _supabase.from('slots').update({ calendario_pubblicato: true }).eq('id', wsSlot.id);
       showToast('Calendario pubblicato!', 'success');
     });
 });
@@ -417,7 +417,7 @@ document.getElementById('pubblica-cal-btn').addEventListener('click', () => {
 //  TAB TURNISTI
 // =============================================
 async function loadTurnisti() {
-  const { data } = await supabase.from('turnisti').select('*').eq('attivo', true).order('nome');
+  const { data } = await _supabase.from('turnisti').select('*').eq('attivo', true).order('nome');
   const div = document.getElementById('turnisti-list');
   if (!data || !data.length) { div.innerHTML = '<em style="color:#aaa">Nessun turnista</em>'; return; }
   wsTurnisti = data;
@@ -441,7 +441,7 @@ document.getElementById('add-turnista-btn').addEventListener('click', async () =
   const nome = document.getElementById('t-nome').value.trim();
   const turni = parseInt(document.getElementById('t-turni').value) || 1;
   if (!nome) { showToast('Inserisci il nome', 'error'); return; }
-  const { error } = await supabase.from('turnisti').insert({ nome, turni_dovuti_per_slot: turni });
+  const { error } = await _supabase.from('turnisti').insert({ nome, turni_dovuti_per_slot: turni });
   if (error) { showToast('Errore: ' + error.message, 'error'); return; }
   document.getElementById('t-nome').value = '';
   showToast('Turnista aggiunto!', 'success');
@@ -449,13 +449,13 @@ document.getElementById('add-turnista-btn').addEventListener('click', async () =
 });
 
 async function updateTurniDovuti(id, val) {
-  await supabase.from('turnisti').update({ turni_dovuti_per_slot: parseInt(val) }).eq('id', id);
+  await _supabase.from('turnisti').update({ turni_dovuti_per_slot: parseInt(val) }).eq('id', id);
   showToast('Aggiornato');
 }
 
 function deleteTurnista(id, nome) {
   adminConfirm('Rimuovi turnista', `Rimuovere ${nome} dall'elenco?`, async () => {
-    await supabase.from('turnisti').update({ attivo: false }).eq('id', id);
+    await _supabase.from('turnisti').update({ attivo: false }).eq('id', id);
     showToast('Turnista rimosso');
     loadTurnisti();
   });

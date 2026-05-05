@@ -155,7 +155,7 @@ async function doInsert() {
   const nomeB = document.getElementById('modal-nome-b').value.trim() || null;
   if (!nomeA) { showToast('Inserisci almeno il tuo nome', 'error'); return; }
 
-  const { error } = await supabase.from('preferenze').insert({
+  const { error } = await _supabase.from('preferenze').insert({
     slot_id: currentSlot.id,
     giorno: pendingInsert.giorno,
     tipo: pendingInsert.tipo,
