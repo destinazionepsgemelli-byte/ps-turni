@@ -419,11 +419,10 @@ document.getElementById('auto-assign-btn').addEventListener('click', autoAssign)
 
 async function autoAssign() {
   adminConfirm('Auto-assegnazione',
-    'Assegna i turnisti che hanno messo desiderata, rispettando il budget turni. Le assegnazioni esistenti vengono mantenute.',
+    'Assegna i turnisti con desiderata rispettando il budget (turni dovuti ±0.5). Giorni senza candidati validi rimangono vuoti.',
     async () => {
-      const dates = dateRange(wsSlot.data_inizio, wsSlot.data_fine);
 
-      // Turni già fatti (da assegnazioni preesistenti)
+      // --- Turni già fatti (da assegnazioni preesistenti) ---
       const fatti = {};
       wsTurnisti.forEach(t => { fatti[t.nome] = 0; });
       wsAssegnazioni.forEach(a => {
@@ -432,49 +431,60 @@ async function autoAssign() {
         if (a.nome_b && fatti[a.nome_b] !== undefined) fatti[a.nome_b] += v;
       });
 
-      // Budget massimo (turni dovuti + 0.5 di tolleranza)
+      // --- Budget massimo per turnista: turni_dovuti + 0.5 ---
       const budgetMax = {};
       wsTurnisti.forEach(t => { budgetMax[t.nome] = t.turni_dovuti_per_slot + 0.5; });
 
-      // Desiderata raggruppate per giorno
+      // --- Desiderata per giorno ---
       const desByDay = {};
       wsPreferenze.filter(p => p.tipo === 'desiderata').forEach(p => {
         if (!desByDay[p.giorno]) desByDay[p.giorno] = [];
         desByDay[p.giorno].push(p);
       });
 
-      // Giorni con desiderata per ogni turnista (da nome_a)
-      const availDays = {};
-      wsTurnisti.forEach(t => { availDays[t.nome] = []; });
+      // --- Giorni con desiderata per ogni turnista (deduplicati) ---
+      const giorniPerNome = {};
+      wsTurnisti.forEach(t => { giorniPerNome[t.nome] = new Set(); });
       wsPreferenze.filter(p => p.tipo === 'desiderata').forEach(p => {
-        if (availDays[p.nome_a] !== undefined) availDays[p.nome_a].push(p.giorno);
+        if (giorniPerNome[p.nome_a]) giorniPerNome[p.nome_a].add(p.giorno);
       });
 
+      // --- Giorni già assegnati ---
       const assignedDays = new Set(wsAssegnazioni.map(a => a.giorno));
 
-      // Capacità residua sufficiente per singolo o coppia
+      // Ha ancora budget per un'assegnazione singola o in coppia?
       const hasBudget = (nome, isCoppia) =>
         (fatti[nome] || 0) + (isCoppia ? 0.5 : 1) <= (budgetMax[nome] || 0);
 
-      // Quanti altri giorni liberi ha questo turnista (escluso il giorno corrente)
-      const altriGiorni = (nome, escludi) =>
-        (availDays[nome] || []).filter(d => !assignedDays.has(d) && d !== escludi).length;
+      // Quanti giorni liberi con desiderata ha questo turnista (escluso il giorno che stiamo valutando)?
+      // Usato per capire chi è più "scarso" e quindi ha priorità
+      const giorniLiberi = (nome, escludi) => {
+        let n = 0;
+        (giorniPerNome[nome] || new Set()).forEach(d => {
+          if (d !== escludi && !assignedDays.has(d)) n++;
+        });
+        return n;
+      };
+
+      // --- Scorre i giorni in ordine ---
+      const dates = dateRange(wsSlot.data_inizio, wsSlot.data_fine);
 
       for (const d of dates) {
         if (assignedDays.has(d)) continue;
-        const candidati = desByDay[d] || [];
-        if (!candidati.length) continue;
 
-        // Prova prima le coppie con entrambi nel budget
+        const candidati = desByDay[d];
+        if (!candidati || candidati.length === 0) continue;
+
+        // 1. COPPIE: entrambi i membri hanno ancora budget
         const coppieValide = candidati.filter(p =>
           p.nome_b && hasBudget(p.nome_a, true) && hasBudget(p.nome_b, true)
         );
 
         if (coppieValide.length > 0) {
-          // Priorità alla coppia con meno alternative (più difficile da collocare)
+          // Priorità alla coppia con meno altri giorni disponibili (più difficile da collocare altrove)
           coppieValide.sort((a, b) =>
-            (altriGiorni(a.nome_a, d) + altriGiorni(a.nome_b, d)) -
-            (altriGiorni(b.nome_a, d) + altriGiorni(b.nome_b, d))
+            (giorniLiberi(a.nome_a, d) + giorniLiberi(a.nome_b, d)) -
+            (giorniLiberi(b.nome_a, d) + giorniLiberi(b.nome_b, d))
           );
           const scelta = coppieValide[0];
           await insertAssign(d, scelta.nome_a, scelta.nome_b);
@@ -484,14 +494,14 @@ async function autoAssign() {
           continue;
         }
 
-        // Poi i singoli nel budget
+        // 2. SINGOLI: turnista con budget residuo
         const singoli = [...new Set(candidati.map(p => p.nome_a))]
-          .filter(nome => hasBudget(nome, false));
+          .filter(n => hasBudget(n, false));
 
-        if (!singoli.length) continue;
+        if (singoli.length === 0) continue;
 
-        // Priorità a chi ha meno altri giorni disponibili (più scarso, più urgente)
-        singoli.sort((a, b) => altriGiorni(a, d) - altriGiorni(b, d));
+        // Priorità a chi ha meno altri giorni disponibili
+        singoli.sort((a, b) => giorniLiberi(a, d) - giorniLiberi(b, d));
         const scelto = singoli[0];
         await insertAssign(d, scelto, null);
         fatti[scelto] = (fatti[scelto] || 0) + 1;
