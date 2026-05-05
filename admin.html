@@ -184,6 +184,23 @@
   </div>
 </div>
 
+<!-- MODAL riapertura slot -->
+<div class="modal-overlay hidden" id="riapri-overlay">
+  <div class="modal-box" style="min-width:320px">
+    <h3>🔓 Riapri slot per desiderata</h3>
+    <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:1rem">Il calendario pubblicato verrà nascosto e i turnisti potranno nuovamente inserire preferenze.</p>
+    <input type="hidden" id="riapri-slot-id">
+    <div class="form-group">
+      <label>Nuova data chiusura richieste</label>
+      <input type="date" id="riapri-chiusura">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="riapri-cancel">Annulla</button>
+      <button class="btn btn-primary" id="riapri-ok">Riapri</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL assegnazione manuale -->
 <div class="modal-overlay hidden" id="assign-overlay">
   <div class="modal-box">

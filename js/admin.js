@@ -169,6 +169,7 @@ async function loadSlots() {
       <span style="font-weight:600;flex:1;color:var(--text)">${s.nome}</span>
       <span style="font-size:.82rem;color:var(--text-muted)">${fmtDate(s.data_inizio)} → ${fmtDate(s.data_fine)}</span>
       <span style="font-size:.8rem">${statoLabel}</span>
+      ${s.calendario_pubblicato ? `<button class="btn btn-secondary btn-sm" onclick="openRiapriSlot('${s.id}','${s.data_chiusura_richieste||''}')">🔓 Riapri</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick='openEditSlot(${JSON.stringify(s)})'>✏️ Modifica</button>
       <button class="btn btn-danger btn-sm" onclick="deleteSlot('${s.id}','${s.nome.replace(/'/g,"\\'")}')">Elimina</button>
     `;
@@ -401,6 +402,31 @@ async function removeAssign(a) {
   renderCounters();
   showToast(`${label} rimosso dal ${fmtDate(a.giorno)}`);
 }
+
+// ---- RIAPRI SLOT ----
+function openRiapriSlot(id, chiusuraAttuale) {
+  document.getElementById('riapri-slot-id').value = id;
+  document.getElementById('riapri-chiusura').value = chiusuraAttuale || '';
+  document.getElementById('riapri-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('riapri-chiusura').focus(), 50);
+}
+
+document.getElementById('riapri-cancel').addEventListener('click', () =>
+  document.getElementById('riapri-overlay').classList.add('hidden'));
+
+document.getElementById('riapri-ok').addEventListener('click', async () => {
+  const id = document.getElementById('riapri-slot-id').value;
+  const chiusura = document.getElementById('riapri-chiusura').value || null;
+  if (!chiusura) { showToast('Inserisci la nuova data di chiusura', 'error'); return; }
+  const { error } = await _supabase.from('slots').update({
+    calendario_pubblicato: false,
+    data_chiusura_richieste: chiusura
+  }).eq('id', id);
+  document.getElementById('riapri-overlay').classList.add('hidden');
+  if (error) { showToast('Errore: ' + error.message, 'error'); return; }
+  showToast('Slot riaperto per le desiderata!', 'success');
+  loadSlots();
+});
 
 // ---- MODAL ASSEGNAZIONE MANUALE ----
 let assignGiorno = null;
