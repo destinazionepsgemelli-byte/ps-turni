@@ -1,3 +1,64 @@
+/* ========== TEMA CREMA (default) ========== */
+:root {
+  --bg: #fdf6e3;
+  --bg-card: #fffef7;
+  --text: #3a3226;
+  --text-muted: #7a6e5f;
+  --border: #e8dfc8;
+  --header-bg1: #5c4a1e;
+  --header-bg2: #3a2e12;
+  --shadow: rgba(90,70,20,.10);
+}
+
+body.dark-mode {
+  --bg: #1e1e2e;
+  --bg-card: #27273a;
+  --text: #e0e0f0;
+  --text-muted: #9090b0;
+  --border: #35354a;
+  --header-bg1: #1a1a2e;
+  --header-bg2: #16213e;
+  --shadow: rgba(0,0,0,.3);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 12px var(--shadow);
+}
+
+header {
+  background: linear-gradient(135deg, var(--header-bg1) 0%, var(--header-bg2) 100%);
+}
+
+.cal-table td {
+  border-bottom: 1px solid var(--border);
+}
+
+.cal-table tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--bg) 60%, var(--bg-card));
+}
+
+.admin-nav {
+  border-bottom: 2px solid var(--border);
+}
+
+.nav-tab {
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.form-group input, .form-group select, .modal-box input {
+  background: var(--bg-card);
+  color: var(--text);
+  border-color: var(--border);
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

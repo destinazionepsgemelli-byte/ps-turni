@@ -17,6 +17,7 @@
   </div>
 <div style="margin-left:auto;display:flex;align-items:center;gap:1rem">
     <span style="font-size:.8rem;opacity:.7"><span class="live-dot"></span>Live</span>
+    <button class="btn btn-secondary btn-sm" id="theme-toggle">🌙 Scuro</button>
     <a href="admin.html" class="btn btn-secondary btn-sm">🔧 Admin</a>
   </div>
 </header>
@@ -106,5 +107,18 @@
 
 <script src="js/config.js"></script>
 <script src="js/public.js"></script>
+<script>
+  const themeBtn = document.getElementById('theme-toggle');
+  if (localStorage.getItem('ps_theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+    themeBtn.textContent = '☀️ Chiaro';
+  }
+  themeBtn.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    themeBtn.textContent = isDark ? '☀️ Chiaro' : '🌙 Scuro';
+    localStorage.setItem('ps_theme', isDark ? 'dark' : 'light');
+  });
+</script>
 </body>
 </html>
