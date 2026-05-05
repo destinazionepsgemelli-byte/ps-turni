@@ -184,6 +184,27 @@
   </div>
 </div>
 
+<!-- MODAL assegnazione manuale -->
+<div class="modal-overlay hidden" id="assign-overlay">
+  <div class="modal-box">
+    <h3 id="assign-title">Assegna turno</h3>
+    <div class="form-group" style="position:relative">
+      <label>Turnista</label>
+      <input type="text" id="assign-nome-a" placeholder="Cerca il nome…" autocomplete="off">
+      <div class="autocomplete-box" id="assign-sug-a"></div>
+    </div>
+    <div class="form-group" style="position:relative">
+      <label>In coppia con (opzionale)</label>
+      <input type="text" id="assign-nome-b" placeholder="Cerca il nome…" autocomplete="off">
+      <div class="autocomplete-box" id="assign-sug-b"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="assign-cancel">Annulla</button>
+      <button class="btn btn-primary" id="assign-ok" disabled style="opacity:.4">Assegna</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 <script src="js/config.js"></script>
 <script src="js/admin.js"></script>

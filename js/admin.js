@@ -402,12 +402,75 @@ async function removeAssign(a) {
   showToast(`${label} rimosso dal ${fmtDate(a.giorno)}`);
 }
 
+// ---- MODAL ASSEGNAZIONE MANUALE ----
+let assignGiorno = null;
+
 function openManualAssign(giorno) {
-  const nome = prompt(`Assegna a ${fmtDate(giorno)}\nNome turnista:`);
-  if (!nome) return;
-  const nomeB = prompt('In coppia con (lascia vuoto per singolo):') || null;
-  insertAssign(giorno, nome.trim(), nomeB ? nomeB.trim() : null);
+  assignGiorno = giorno;
+  document.getElementById('assign-title').textContent = `Assegna turno – ${fmtDate(giorno)}`;
+  document.getElementById('assign-nome-a').value = '';
+  document.getElementById('assign-nome-b').value = '';
+  document.getElementById('assign-sug-a').style.display = 'none';
+  document.getElementById('assign-sug-b').style.display = 'none';
+  validateAssignModal();
+  document.getElementById('assign-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('assign-nome-a').focus(), 50);
 }
+
+function validateAssignModal() {
+  const nomi = wsTurnisti.map(t => t.nome);
+  const a = document.getElementById('assign-nome-a').value.trim();
+  const b = document.getElementById('assign-nome-b').value.trim();
+  const ok = nomi.includes(a) && (b === '' || (nomi.includes(b) && b !== a));
+  document.getElementById('assign-ok').disabled = !ok;
+  document.getElementById('assign-ok').style.opacity = ok ? '1' : '.4';
+}
+
+function setupAssignAutocomplete(inputId, sugId, otherInputId) {
+  const input = document.getElementById(inputId);
+  const box = document.getElementById(sugId);
+  input.addEventListener('input', () => {
+    const val = input.value.trim().toLowerCase();
+    box.innerHTML = '';
+    if (!val) { box.style.display = 'none'; validateAssignModal(); return; }
+    const otherVal = document.getElementById(otherInputId).value.trim();
+    const filtered = wsTurnisti.map(t => t.nome)
+      .filter(n => n.toLowerCase().includes(val) && n !== otherVal);
+    if (!filtered.length) { box.style.display = 'none'; validateAssignModal(); return; }
+    filtered.forEach(nome => {
+      const item = document.createElement('div');
+      item.className = 'autocomplete-item';
+      item.textContent = nome;
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        input.value = nome;
+        box.style.display = 'none';
+        validateAssignModal();
+      });
+      box.appendChild(item);
+    });
+    box.style.display = 'block';
+  });
+  input.addEventListener('blur', () => { setTimeout(() => { box.style.display = 'none'; }, 150); validateAssignModal(); });
+  input.addEventListener('focus', () => { if (input.value.trim()) input.dispatchEvent(new Event('input')); });
+}
+
+document.getElementById('assign-cancel').addEventListener('click', () =>
+  document.getElementById('assign-overlay').classList.add('hidden'));
+document.getElementById('assign-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('assign-overlay'))
+    document.getElementById('assign-overlay').classList.add('hidden');
+});
+document.getElementById('assign-ok').addEventListener('click', async () => {
+  const nomeA = document.getElementById('assign-nome-a').value.trim();
+  const nomeB = document.getElementById('assign-nome-b').value.trim() || null;
+  document.getElementById('assign-overlay').classList.add('hidden');
+  await insertAssign(assignGiorno, nomeA, nomeB);
+});
+document.getElementById('assign-nome-b').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('assign-ok').disabled)
+    document.getElementById('assign-ok').click();
+});
 
 function renderUnassigned() {
   const div = document.getElementById('unassigned-list');
@@ -641,6 +704,8 @@ function deleteTurnista(id, nome) {
 function initAdmin() {
   loadSlots();
   loadTurnisti();
+  setupAssignAutocomplete('assign-nome-a', 'assign-sug-a', 'assign-nome-b');
+  setupAssignAutocomplete('assign-nome-b', 'assign-sug-b', 'assign-nome-a');
 }
 
 if (localStorage.getItem('ps_admin_auth') === '1') {
