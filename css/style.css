@@ -222,18 +222,8 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 .indisp-highlight { background: rgba(244, 67, 54, 0.12) !important; outline: 1px dashed rgba(244, 67, 54, 0.5); }
 
 /* ========== TOGGLE BUTTONS HEADER PUBBLICA ========== */
-.pub-toggle-btn {
-  padding: .45rem 1.3rem; border-radius: 24px; font-size: .88rem; font-weight: 700;
-  cursor: pointer; border: 2px solid rgba(255,255,255,.35);
-  background: rgba(255,255,255,.1); color: rgba(255,255,255,.65);
-  transition: all .2s; white-space: nowrap;
-}
-.pub-toggle-btn.active {
-  background: white; color: #3a2e12; border-color: white;
-  color: var(--header-bg2, #3a2e12);
-}
-.pub-toggle-btn:hover { background: rgba(255,255,255,.22); color: white; }
-.pub-toggle-btn.active:hover { background: #f0e8d0; }
+.pub-toggle-btn { opacity: .55; transition: opacity .15s; }
+.pub-toggle-btn.active { opacity: 1; }
 
 /* ========== COLLAPSE SLOT ========== */
 .slot-collapse-btn {

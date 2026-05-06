@@ -377,8 +377,8 @@ function setupPubNav(hasRichieste, hasCalendari) {
   const secR = document.getElementById('section-richieste');
   const secC = document.getElementById('section-calendari');
 
-  // Mostra la nav solo se ci sono entrambe le sezioni
-  nav.style.display = (hasRichieste && hasCalendari) ? 'flex' : 'none';
+  // Mostra la nav se c'è almeno una sezione
+  nav.style.display = (hasRichieste || hasCalendari) ? 'flex' : 'none';
 
   // Stato iniziale: entrambe attive se presenti, altrimenti solo quella disponibile
   secR.style.display = hasRichieste ? '' : 'none';
