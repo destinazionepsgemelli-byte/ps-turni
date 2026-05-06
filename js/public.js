@@ -116,6 +116,9 @@ function openInsertModal(giorno, tipo, slot) {
   document.getElementById('modal-ok').style.opacity = '.4';
   document.getElementById('modal-title').textContent =
     tipo === 'desiderata' ? `🟢 Desiderata – ${fmtDate(giorno)}` : `🔴 Indisponibilità – ${fmtDate(giorno)}`;
+  // Campo coppia: visibile solo per le desiderata
+  const campoCoppia = document.getElementById('modal-nome-b').closest('.form-group');
+  campoCoppia.style.display = tipo === 'desiderata' ? '' : 'none';
   document.getElementById('modal-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('modal-nome-a').focus(), 50);
 }
