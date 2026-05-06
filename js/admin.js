@@ -1,3 +1,21 @@
+// ---- AUTO-SCROLL DURANTE DRAG ----
+let _autoScrollId = null;
+document.addEventListener('dragover', e => {
+  if (_autoScrollId) { clearInterval(_autoScrollId); _autoScrollId = null; }
+  const zone = 80, speed = 10;
+  const y = e.clientY, h = window.innerHeight;
+  if (y < zone) {
+    const v = speed * (1 - y / zone);
+    _autoScrollId = setInterval(() => window.scrollBy(0, -v), 16);
+  } else if (y > h - zone) {
+    const v = speed * (1 - (h - y) / zone);
+    _autoScrollId = setInterval(() => window.scrollBy(0, v), 16);
+  }
+});
+['dragend', 'drop'].forEach(evt => document.addEventListener(evt, () => {
+  if (_autoScrollId) { clearInterval(_autoScrollId); _autoScrollId = null; }
+}));
+
 // ---- LOGIN ----
 document.getElementById('login-btn').addEventListener('click', doLogin);
 document.getElementById('login-pw').addEventListener('keydown', e => {
@@ -575,10 +593,10 @@ document.getElementById('auto-assign-btn').addEventListener('click', autoAssign)
 
 async function autoAssign() {
   adminConfirm('Auto-assegnazione',
-    'Assegna i turnisti con desiderata rispettando il budget (turni dovuti ±0.5). Giorni senza candidati validi rimangono vuoti.',
+    'Analizza tutte le desiderata e trova la combinazione ottimale. Prima le coppie, poi i singoli.',
     async () => {
 
-      // --- Turni già fatti (da assegnazioni preesistenti) ---
+      // --- Budget ---
       const fatti = {};
       wsTurnisti.forEach(t => { fatti[t.nome] = 0; });
       wsAssegnazioni.forEach(a => {
@@ -586,35 +604,40 @@ async function autoAssign() {
         if (fatti[a.nome_a] !== undefined) fatti[a.nome_a] += v;
         if (a.nome_b && fatti[a.nome_b] !== undefined) fatti[a.nome_b] += v;
       });
-
-      // --- Budget massimo per turnista: turni_dovuti + 0.5 ---
+      const budgetTarget = {};
       const budgetMax = {};
-      wsTurnisti.forEach(t => { budgetMax[t.nome] = t.turni_dovuti_per_slot + 0.5; });
-
-      // --- Desiderata per giorno ---
-      const desByDay = {};
-      wsPreferenze.filter(p => p.tipo === 'desiderata').forEach(p => {
-        if (!desByDay[p.giorno]) desByDay[p.giorno] = [];
-        desByDay[p.giorno].push(p);
+      wsTurnisti.forEach(t => {
+        budgetTarget[t.nome] = t.turni_dovuti_per_slot;
+        budgetMax[t.nome]    = t.turni_dovuti_per_slot + 0.5;
       });
+      const assignedDays = new Set(wsAssegnazioni.map(a => a.giorno));
+      const hasBudget = (nome, v) => (fatti[nome] || 0) + v <= (budgetMax[nome] || 0);
 
-      // --- Giorni con desiderata per ogni turnista (deduplicati) ---
+      // --- Mappe desiderata ---
+      // giorniPerNome: nome -> Set<giorno>  (da nome_a di ogni desiderata)
       const giorniPerNome = {};
       wsTurnisti.forEach(t => { giorniPerNome[t.nome] = new Set(); });
       wsPreferenze.filter(p => p.tipo === 'desiderata').forEach(p => {
         if (giorniPerNome[p.nome_a]) giorniPerNome[p.nome_a].add(p.giorno);
       });
 
-      // --- Giorni già assegnati ---
-      const assignedDays = new Set(wsAssegnazioni.map(a => a.giorno));
+      // singliPerGiorno: giorno -> Set<nome>
+      const singliPerGiorno = {};
+      wsPreferenze.filter(p => p.tipo === 'desiderata').forEach(p => {
+        if (!singliPerGiorno[p.giorno]) singliPerGiorno[p.giorno] = new Set();
+        singliPerGiorno[p.giorno].add(p.nome_a);
+      });
 
-      // Ha ancora budget per un'assegnazione singola o in coppia?
-      const hasBudget = (nome, isCoppia) =>
-        (fatti[nome] || 0) + (isCoppia ? 0.5 : 1) <= (budgetMax[nome] || 0);
+      // coppieDesiderata: 'A|B' (sorted) -> Set<giorno>
+      const coppieDesiderata = {};
+      wsPreferenze.filter(p => p.tipo === 'desiderata' && p.nome_b).forEach(p => {
+        const key = [p.nome_a, p.nome_b].sort().join('|');
+        if (!coppieDesiderata[key]) coppieDesiderata[key] = new Set();
+        coppieDesiderata[key].add(p.giorno);
+      });
 
-      // Quanti giorni liberi con desiderata ha questo turnista (escluso il giorno che stiamo valutando)?
-      // Usato per capire chi è più "scarso" e quindi ha priorità
-      const giorniLiberi = (nome, escludi) => {
+      // flessibilità: quanti giorni liberi ha ancora questo turnista (escluso d)
+      const flessibilita = (nome, escludi) => {
         let n = 0;
         (giorniPerNome[nome] || new Set()).forEach(d => {
           if (d !== escludi && !assignedDays.has(d)) n++;
@@ -622,43 +645,85 @@ async function autoAssign() {
         return n;
       };
 
-      // --- Scorre i giorni in ordine ---
-      const dates = dateRange(wsSlot.data_inizio, wsSlot.data_fine);
+      // --- FASE 1: COPPIE ---
+      // Per ogni coppia calcola quanti giorni deve fare per raggiungere il target,
+      // poi sceglie i giorni ottimali (prima quelli dove è l'unica coppia/candidato,
+      // poi quelli dove gli altri candidati sono più flessibili)
+      for (const [key, giorni] of Object.entries(coppieDesiderata)) {
+        const [nomeA, nomeB] = key.split('|');
 
+        // Giorni disponibili per questa coppia
+        const giorniDisp = [...giorni]
+          .filter(d => !assignedDays.has(d) && hasBudget(nomeA, 0.5) && hasBudget(nomeB, 0.5))
+          .sort();
+        if (!giorniDisp.length) continue;
+
+        // Quanti giorni deve fare questa coppia?
+        // (ogni giorno = 0.5 per ciascuno; target = turniTarget * 2 giorni)
+        const targetResiduoA = Math.max(0, (budgetTarget[nomeA] || 1) - (fatti[nomeA] || 0));
+        const targetResiduoB = Math.max(0, (budgetTarget[nomeB] || 1) - (fatti[nomeB] || 0));
+        const maxGiorni = Math.min(
+          Math.floor(((budgetMax[nomeA] || 1.5) - (fatti[nomeA] || 0)) / 0.5),
+          Math.floor(((budgetMax[nomeB] || 1.5) - (fatti[nomeB] || 0)) / 0.5),
+          giorniDisp.length
+        );
+        const targetGiorni = Math.min(
+          Math.ceil(Math.max(targetResiduoA, targetResiduoB) * 2),
+          maxGiorni
+        );
+        if (targetGiorni <= 0) continue;
+
+        // Scoratura: preferisci giorni dove la coppia è insostituibile,
+        // poi dove gli altri candidati hanno più alternative (possono andare altrove)
+        const scored = giorniDisp.map(d => {
+          const altriSingoli = [...(singliPerGiorno[d] || new Set())]
+            .filter(n => n !== nomeA && n !== nomeB && hasBudget(n, 1));
+          const altreCoppie = Object.entries(coppieDesiderata)
+            .filter(([k, gg]) => k !== key && gg.has(d))
+            .filter(([k]) => { const [a, b] = k.split('|'); return hasBudget(a, 0.5) && hasBudget(b, 0.5); })
+            .length;
+          const totAltri = altriSingoli.length + altreCoppie;
+
+          if (totAltri === 0) return { d, score: Infinity }; // solo noi → DEVE andare qui
+
+          // Media flessibilità degli altri singoli (più è alta, più possono andare altrove)
+          const mediaFless = altriSingoli.length > 0
+            ? altriSingoli.reduce((s, n) => s + flessibilita(n, d), 0) / altriSingoli.length
+            : 0.5; // se solo altre coppie, valore neutro
+          return { d, score: mediaFless };
+        });
+
+        // Ordina: Infinity prima (giorni unici), poi score decrescente
+        // (altri molto flessibili → possiamo occupare questo slot, loro vanno altrove)
+        scored.sort((a, b) => {
+          if (a.score === Infinity && b.score !== Infinity) return -1;
+          if (b.score === Infinity && a.score !== Infinity) return 1;
+          return b.score - a.score;
+        });
+
+        let assegnati = 0;
+        for (const { d } of scored) {
+          if (assegnati >= targetGiorni) break;
+          if (assignedDays.has(d)) continue;
+          if (!hasBudget(nomeA, 0.5) || !hasBudget(nomeB, 0.5)) break;
+          await insertAssign(d, nomeA, nomeB);
+          fatti[nomeA] = (fatti[nomeA] || 0) + 0.5;
+          fatti[nomeB] = (fatti[nomeB] || 0) + 0.5;
+          assignedDays.add(d);
+          assegnati++;
+        }
+      }
+
+      // --- FASE 2: SINGOLI ---
+      const dates = dateRange(wsSlot.data_inizio, wsSlot.data_fine);
       for (const d of dates) {
         if (assignedDays.has(d)) continue;
-
-        const candidati = desByDay[d];
-        if (!candidati || candidati.length === 0) continue;
-
-        // 1. COPPIE: entrambi i membri hanno ancora budget
-        const coppieValide = candidati.filter(p =>
-          p.nome_b && hasBudget(p.nome_a, true) && hasBudget(p.nome_b, true)
-        );
-
-        if (coppieValide.length > 0) {
-          // Priorità alla coppia con meno altri giorni disponibili (più difficile da collocare altrove)
-          coppieValide.sort((a, b) =>
-            (giorniLiberi(a.nome_a, d) + giorniLiberi(a.nome_b, d)) -
-            (giorniLiberi(b.nome_a, d) + giorniLiberi(b.nome_b, d))
-          );
-          const scelta = coppieValide[0];
-          await insertAssign(d, scelta.nome_a, scelta.nome_b);
-          fatti[scelta.nome_a] = (fatti[scelta.nome_a] || 0) + 0.5;
-          fatti[scelta.nome_b] = (fatti[scelta.nome_b] || 0) + 0.5;
-          assignedDays.add(d);
-          continue;
-        }
-
-        // 2. SINGOLI: turnista con budget residuo
-        const singoli = [...new Set(candidati.map(p => p.nome_a))]
-          .filter(n => hasBudget(n, false));
-
-        if (singoli.length === 0) continue;
-
-        // Priorità a chi ha meno altri giorni disponibili
-        singoli.sort((a, b) => giorniLiberi(a, d) - giorniLiberi(b, d));
-        const scelto = singoli[0];
+        const candidati = [...(singliPerGiorno[d] || new Set())]
+          .filter(n => hasBudget(n, 1));
+        if (!candidati.length) continue;
+        // Priorità: chi ha meno altri giorni liberi (più scarso, più urgente collocarlo)
+        candidati.sort((a, b) => flessibilita(a, d) - flessibilita(b, d));
+        const scelto = candidati[0];
         await insertAssign(d, scelto, null);
         fatti[scelto] = (fatti[scelto] || 0) + 1;
         assignedDays.add(d);
