@@ -774,15 +774,27 @@ function renderCounters() {
     <th style="padding:.3rem;border-bottom:2px solid var(--border);color:var(--text)">Fatti</th>
     <th style="padding:.3rem;border-bottom:2px solid var(--border);color:var(--text)">Delta</th>
   </tr>`;
-  wsTurnisti.forEach(t => {
+  const sorted = [...wsTurnisti].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+  sorted.forEach(t => {
     const fatti = fattiMap[t.nome] || 0;
     const delta = fatti - t.turni_dovuti_per_slot;
-    const color = delta >= 0 ? '#2e7d32' : '#c62828';
+    const sign = delta >= 0 ? '+' : '';
+    let deltaCss;
+    if (delta < -0.5) {
+      // Sotto il range minimo → rosso
+      deltaCss = 'color:#c62828;font-weight:700';
+    } else if (delta <= 0.5) {
+      // Nel range accettabile ±0.5 → arancione
+      deltaCss = 'color:#e65100;font-weight:700';
+    } else {
+      // Sopra il range → bianco su sfondo arancione
+      deltaCss = 'color:white;background:#e65100;border-radius:4px;padding:1px 7px;font-weight:700;display:inline-block';
+    }
     html += `<tr>
       <td style="padding:.3rem .5rem;border-bottom:1px solid var(--border);color:var(--text)">${t.nome}</td>
       <td style="padding:.3rem;text-align:center;border-bottom:1px solid var(--border);color:var(--text)">${t.turni_dovuti_per_slot}</td>
       <td style="padding:.3rem;text-align:center;border-bottom:1px solid var(--border);color:var(--text)">${fatti}</td>
-      <td style="padding:.3rem;text-align:center;color:${color};font-weight:700;border-bottom:1px solid var(--border)">${delta >= 0 ? '+' : ''}${delta}</td>
+      <td style="padding:.3rem;text-align:center;border-bottom:1px solid var(--border)"><span style="${deltaCss}">${sign}${delta}</span></td>
     </tr>`;
   });
   html += '</table>';
