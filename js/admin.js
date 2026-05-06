@@ -630,20 +630,17 @@ function openManualAssign(giorno, btn) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px';
     daAssegnare.forEach(t => {
-      wrap.appendChild(makeDaAssegnareBadge(t, () => {
-        // opacity:0 invece di visibility:hidden — non cancella il drag in Chrome
-        if (_wsPopup) {
-          _wsPopup.style.opacity = '0';
-          _wsPopup.style.pointerEvents = 'none';
-          document.removeEventListener('click', closeWsPopupOutside);
-        }
-        // Chiude definitivamente al dragend
-        const onDragEnd = () => {
-          closeWsPopup();
-          document.removeEventListener('dragend', onDragEnd);
-        };
-        document.addEventListener('dragend', onDragEnd);
-      }));
+      const span = document.createElement('span');
+      span.className = 'badge';
+      span.style.cursor = 'pointer';
+      span.title = `Assegna ${t.nome} a questo turno`;
+      span.textContent = t.nome;
+      span.addEventListener('click', async e => {
+        e.stopPropagation();
+        closeWsPopup();
+        await insertAssign(giorno, t.nome, null);
+      });
+      wrap.appendChild(span);
     });
     popup.appendChild(wrap);
   }
@@ -797,14 +794,17 @@ function renderCounters() {
       // Esattamente al target → verde
       deltaCss = 'color:#2e7d32;font-weight:700';
     } else if (delta < -0.5) {
-      // Sotto il range (< turni_dovuti - 0.5) → rosso
+      // Sotto il range → rosso
       deltaCss = 'color:#c62828;font-weight:700';
-    } else if (delta > 0.5) {
-      // Sopra il range (> turni_dovuti + 0.5) → bianco su sfondo arancione
-      deltaCss = 'color:white;background:#e65100;border-radius:4px;padding:1px 7px;font-weight:700;display:inline-block';
-    } else {
-      // Nel range ±0.5 ma non al target esatto → arancione
+    } else if (delta < 0) {
+      // Leggermente sotto target ma nel range → arancione
       deltaCss = 'color:#e65100;font-weight:700';
+    } else if (delta < 0.5) {
+      // Leggermente sopra target ma nel range → giallo
+      deltaCss = 'color:#f9a825;font-weight:700';
+    } else {
+      // Sopra il range (>= +0.5) → bianco su sfondo arancione
+      deltaCss = 'color:white;background:#e65100;border-radius:4px;padding:1px 7px;font-weight:700;display:inline-block';
     }
     html += `<tr>
       <td style="padding:.3rem .5rem;border-bottom:1px solid var(--border);color:var(--text)">${t.nome}</td>
