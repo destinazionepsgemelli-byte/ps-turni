@@ -382,7 +382,7 @@ function renderWsCalendar() {
     const addBtn = document.createElement('button');
     addBtn.className = 'add-btn';
     addBtn.textContent = '+';
-    addBtn.addEventListener('click', () => openManualAssign(d));
+    addBtn.addEventListener('click', () => openManualAssign(d, addBtn));
     td.appendChild(addBtn);
     tr.appendChild(td);
     tbody.appendChild(tr);
@@ -408,8 +408,57 @@ function makeAssignBadge(a) {
     clearHighlightIndisp();
     if (!_dropHandled) removeAssign(a);
   });
+  // Drop su un altro badge = crea coppia
+  span.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); span.classList.add('badge-drop-target'); });
+  span.addEventListener('dragleave', e => { e.stopPropagation(); span.classList.remove('badge-drop-target'); });
+  span.addEventListener('drop', e => { e.stopPropagation(); span.classList.remove('badge-drop-target'); handleDropOnBadge(e, a); });
   span.querySelector('.badge-x').addEventListener('click', () => removeAssign(a));
   return span;
+}
+
+async function handleDropOnBadge(e, targetA) {
+  e.preventDefault();
+  _dropHandled = true;
+  const dragNomeA = e.dataTransfer.getData('text/plain');
+  const dragNomeB = e.dataTransfer.getData('nome-b') || null;
+  const fromGiorno = e.dataTransfer.getData('from-giorno');
+
+  // Validazioni
+  if (dragNomeA === targetA.nome_a) { showToast('Stesso turnista', 'error'); return; }
+  if (targetA.nome_b) { showToast('Il turno di destinazione è già una coppia', 'error'); return; }
+  if (dragNomeB) { showToast('Non puoi unire una coppia a un altro turnista', 'error'); return; }
+
+  // Check indisponibilità
+  const haIndisp = wsPreferenze.some(p =>
+    p.tipo === 'indisponibilita' && p.giorno === targetA.giorno &&
+    (p.nome_a === dragNomeA || p.nome_b === dragNomeA)
+  );
+  if (haIndisp) {
+    const ok = await new Promise(resolve =>
+      adminConfirm('⚠️ Indisponibilità dichiarata',
+        `${dragNomeA} ha dichiarato indisponibilità per questo giorno. Vuoi creare la coppia comunque?`,
+        () => resolve(true), () => resolve(false))
+    );
+    if (!ok) return;
+  }
+
+  // Rimuovi assegnazione sorgente (se da calendario)
+  if (fromGiorno !== '__unassigned__') {
+    const src = wsAssegnazioni.find(a => a.giorno === fromGiorno && a.nome_a === dragNomeA);
+    if (src) {
+      await _supabase.from('assegnazioni').delete().eq('id', src.id);
+      wsAssegnazioni = wsAssegnazioni.filter(x => x.id !== src.id);
+      await decrementaContatore(src.nome_a, src.nome_b);
+    }
+  }
+  // Rimuovi assegnazione target
+  await _supabase.from('assegnazioni').delete().eq('id', targetA.id);
+  wsAssegnazioni = wsAssegnazioni.filter(x => x.id !== targetA.id);
+  await decrementaContatore(targetA.nome_a, targetA.nome_b);
+
+  // Crea coppia
+  await insertAssign(targetA.giorno, dragNomeA, targetA.nome_a);
+  showToast(`Coppia: ${dragNomeA} + ${targetA.nome_a}`, 'success');
 }
 
 async function handleDrop(nomeA, nomeB, giornoTarget, fromGiorno, assId) {
@@ -515,10 +564,64 @@ document.getElementById('riapri-ok').addEventListener('click', async () => {
   loadSlots();
 });
 
-// ---- MODAL ASSEGNAZIONE MANUALE ----
+// ---- POPUP "+" E MODAL ASSEGNAZIONE MANUALE ----
 let assignGiorno = null;
+let _wsPopup = null;
 
-function openManualAssign(giorno) {
+function closeWsPopup() {
+  if (_wsPopup) { _wsPopup.remove(); _wsPopup = null; }
+  document.removeEventListener('click', closeWsPopupOutside);
+}
+function closeWsPopupOutside(e) {
+  if (_wsPopup && !_wsPopup.contains(e.target)) closeWsPopup();
+}
+
+// Popup accanto al "+": mostra badge da assegnare + link ricerca manuale
+function openManualAssign(giorno, btn) {
+  closeWsPopup();
+
+  const popup = document.createElement('div');
+  popup.className = 'ws-popup';
+  _wsPopup = popup;
+
+  // Riga "Ricerca manuale"
+  const manualLink = document.createElement('div');
+  manualLink.className = 'ws-popup-manual';
+  manualLink.textContent = '🔍 Ricerca manuale';
+  manualLink.addEventListener('click', () => { closeWsPopup(); openAssignModal(giorno); });
+  popup.appendChild(manualLink);
+
+  const sep = document.createElement('hr');
+  sep.style.cssText = 'border:none;border-top:1px solid var(--border);margin:.4rem 0 .6rem';
+  popup.appendChild(sep);
+
+  // Badge dei turnisti da assegnare
+  const daAssegnare = getDaAssegnare();
+  if (!daAssegnare.length) {
+    const em = document.createElement('em');
+    em.style.cssText = 'color:var(--text-muted);font-size:.82rem';
+    em.textContent = 'Tutti al target!';
+    popup.appendChild(em);
+  } else {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px';
+    daAssegnare.forEach(t => {
+      wrap.appendChild(makeDaAssegnareBadge(t, () => closeWsPopup()));
+    });
+    popup.appendChild(wrap);
+  }
+
+  // Posiziona vicino al pulsante "+"
+  const rect = btn.getBoundingClientRect();
+  popup.style.top  = (rect.bottom + 6) + 'px';
+  popup.style.left = Math.min(rect.left, window.innerWidth - 240) + 'px';
+  document.body.appendChild(popup);
+
+  setTimeout(() => document.addEventListener('click', closeWsPopupOutside), 0);
+}
+
+// Modal con ricerca autocomplete (chiamato da "Ricerca manuale" nel popup)
+function openAssignModal(giorno) {
   assignGiorno = giorno;
   document.getElementById('assign-title').textContent = `Assegna turno – ${fmtDate(giorno)}`;
   document.getElementById('assign-nome-a').value = '';
@@ -585,29 +688,48 @@ document.getElementById('assign-nome-b').addEventListener('keydown', e => {
     document.getElementById('assign-ok').click();
 });
 
+// Helper: calcola fatti per ogni turnista da wsAssegnazioni
+function getFattiMap() {
+  const m = {};
+  wsAssegnazioni.forEach(a => {
+    const v = a.nome_b ? 0.5 : 1;
+    m[a.nome_a] = (m[a.nome_a] || 0) + v;
+    if (a.nome_b) m[a.nome_b] = (m[a.nome_b] || 0) + v;
+  });
+  return m;
+}
+
+// Turnisti che non hanno ancora raggiunto il loro turni_dovuti
+function getDaAssegnare() {
+  const fatti = getFattiMap();
+  return wsTurnisti.filter(t => (fatti[t.nome] || 0) < t.turni_dovuti_per_slot);
+}
+
+function makeDaAssegnareBadge(t, onDragStart) {
+  const span = document.createElement('span');
+  span.className = 'badge drag-item';
+  span.draggable = true;
+  span.textContent = t.nome;
+  span.addEventListener('dragstart', e => {
+    _dropHandled = false;
+    e.dataTransfer.setData('text/plain', t.nome);
+    e.dataTransfer.setData('from-giorno', '__unassigned__');
+    if (onDragStart) onDragStart();
+    setTimeout(() => highlightIndisp([t.nome]), 0);
+  });
+  span.addEventListener('dragend', () => clearHighlightIndisp());
+  return span;
+}
+
 function renderUnassigned() {
   const div = document.getElementById('unassigned-list');
-  const assigned = new Set(wsAssegnazioni.map(a => a.nome_a));
-  const unassigned = wsTurnisti.filter(t => !assigned.has(t.nome));
-  if (!unassigned.length) {
-    div.innerHTML = '<em style="color:#2e7d32">✅ Tutti assegnati!</em>';
+  const daAssegnare = getDaAssegnare();
+  if (!daAssegnare.length) {
+    div.innerHTML = '<em style="color:#2e7d32">✅ Tutti al target!</em>';
     return;
   }
   div.innerHTML = '';
-  unassigned.forEach(t => {
-    const span = document.createElement('span');
-    span.className = 'badge drag-item';
-    span.draggable = true;
-    span.textContent = t.nome;
-    span.addEventListener('dragstart', e => {
-      _dropHandled = false;
-      e.dataTransfer.setData('text/plain', t.nome);
-      e.dataTransfer.setData('from-giorno', '__unassigned__');
-      setTimeout(() => highlightIndisp([t.nome]), 0);
-    });
-    span.addEventListener('dragend', () => clearHighlightIndisp());
-    div.appendChild(span);
-  });
+  daAssegnare.forEach(t => div.appendChild(makeDaAssegnareBadge(t)));
 }
 
 function renderCounters() {

@@ -221,6 +221,21 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 .drag-over { outline: 2px dashed #1565c0; background: #e3f2fd !important; }
 .indisp-highlight { background: rgba(244, 67, 54, 0.12) !important; outline: 1px dashed rgba(244, 67, 54, 0.5); }
 
+/* ========== POPUP WORKSPACE "+" ========== */
+.ws-popup {
+  position: fixed; z-index: 600;
+  background: var(--bg-card); border: 1.5px solid var(--border);
+  border-radius: 12px; padding: .8rem; max-width: 260px; min-width: 160px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.35);
+  max-height: 320px; overflow-y: auto;
+}
+.ws-popup-manual {
+  font-size: .82rem; font-weight: 600; color: #1565c0;
+  cursor: pointer; padding: .3rem .2rem; border-radius: 6px;
+}
+.ws-popup-manual:hover { background: color-mix(in srgb, #1565c0 10%, transparent); }
+.badge-drop-target { outline: 2px solid #1565c0 !important; background: #e3f2fd !important; color:#1565c0 !important; }
+
 /* ========== LIVE DOT ========== */
 .live-dot {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%;
