@@ -182,14 +182,19 @@ async function loadSlots() {
       ? '<span style="color:#1565c0">📋 Calendario pubblicato</span>'
       : s.pubblicato
         ? '<span style="color:#2e7d32">✅ Aperto per desiderata</span>'
-        : '<span style="color:#aaa">⏸ Bozza</span>';
+        : '<span style="color:#aaa">⏸ Nascosto</span>';
+    const nomeEsc = s.nome.replace(/'/g,"\\'");
     row.innerHTML = `
       <span style="font-weight:600;flex:1;color:var(--text)">${s.nome}</span>
       <span style="font-size:.82rem;color:var(--text-muted)">${fmtDate(s.data_inizio)} → ${fmtDate(s.data_fine)}</span>
       <span style="font-size:.8rem">${statoLabel}</span>
       ${s.calendario_pubblicato ? `<button class="btn btn-secondary btn-sm" onclick="openRiapriSlot('${s.id}','${s.data_chiusura_richieste||''}')">🔓 Riapri</button>` : ''}
+      ${s.pubblicato
+        ? `<button class="btn btn-secondary btn-sm" onclick="nascondiSlot('${s.id}','${nomeEsc}')">👁 Nascondi</button>`
+        : `<button class="btn btn-success btn-sm" onclick="mostraSlot('${s.id}')">👁 Mostra</button>`}
       <button class="btn btn-secondary btn-sm" onclick='openEditSlot(${JSON.stringify(s)})'>✏️ Modifica</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteSlot('${s.id}','${s.nome.replace(/'/g,"\\'")}')">Elimina</button>
+      <button class="btn btn-secondary btn-sm" onclick="duplicaSlot('${s.id}','${nomeEsc}')" title="Duplica slot">⧉</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSlot('${s.id}','${nomeEsc}')">Elimina</button>
     `;
     div.appendChild(row);
   });
@@ -228,6 +233,70 @@ async function publishSlot(id) {
   await _supabase.from('slots').update({ pubblicato: true }).eq('id', id);
   showToast('Slot pubblicato!', 'success');
   loadSlots();
+}
+
+function nascondiSlot(id, nome) {
+  adminConfirm('Nascondi slot',
+    `Nascondere "${nome}" dalla visualizzazione pubblica? Il slot rimarrà visibile solo nell'admin.`,
+    async () => {
+      await _supabase.from('slots').update({ pubblicato: false }).eq('id', id);
+      showToast('Slot nascosto', 'success');
+      loadSlots();
+    });
+}
+
+async function mostraSlot(id) {
+  await _supabase.from('slots').update({ pubblicato: true }).eq('id', id);
+  showToast('Slot reso visibile', 'success');
+  loadSlots();
+}
+
+function duplicaSlot(id, nome) {
+  adminConfirm('Duplica slot',
+    `Duplicare "${nome}" con tutte le preferenze e assegnazioni? Il nuovo slot si chiamerà "Copia di ${nome}".`,
+    async () => {
+      // Carica slot originale
+      const { data: orig } = await _supabase.from('slots').select('*').eq('id', id).single();
+      if (!orig) { showToast('Errore: slot non trovato', 'error'); return; }
+
+      // Crea nuovo slot
+      const { data: nuovoSlot, error: errSlot } = await _supabase.from('slots').insert({
+        nome: `Copia di ${orig.nome}`,
+        data_inizio: orig.data_inizio,
+        data_fine: orig.data_fine,
+        data_chiusura_richieste: orig.data_chiusura_richieste,
+        pubblicato: false,
+        calendario_pubblicato: false
+      }).select().single();
+      if (errSlot) { showToast('Errore: ' + errSlot.message, 'error'); return; }
+
+      // Copia preferenze
+      const { data: prefs } = await _supabase.from('preferenze').select('*').eq('slot_id', id);
+      if (prefs && prefs.length) {
+        await _supabase.from('preferenze').insert(
+          prefs.map(p => ({ slot_id: nuovoSlot.id, giorno: p.giorno, tipo: p.tipo, nome_a: p.nome_a, nome_b: p.nome_b }))
+        );
+      }
+
+      // Copia assegnazioni
+      const { data: assegn } = await _supabase.from('assegnazioni').select('*').eq('slot_id', id);
+      if (assegn && assegn.length) {
+        await _supabase.from('assegnazioni').insert(
+          assegn.map(a => ({ slot_id: nuovoSlot.id, giorno: a.giorno, nome_a: a.nome_a, nome_b: a.nome_b }))
+        );
+      }
+
+      // Copia contatori
+      const { data: contatori } = await _supabase.from('turni_contatore').select('*').eq('slot_id', id);
+      if (contatori && contatori.length) {
+        await _supabase.from('turni_contatore').insert(
+          contatori.map(c => ({ slot_id: nuovoSlot.id, nome: c.nome, turni_fatti: c.turni_fatti }))
+        );
+      }
+
+      showToast(`Slot duplicato come "Copia di ${orig.nome}"!`, 'success');
+      loadSlots();
+    });
 }
 
 function deleteSlot(id, nome) {
@@ -733,6 +802,20 @@ async function autoAssign() {
       await loadWorkspace();
     });
 }
+
+document.getElementById('azzera-btn').addEventListener('click', () => {
+  adminConfirm('Azzera assegnazioni',
+    'Rimuovere tutte le assegnazioni per questo slot? I contatori verranno azzerati.',
+    async () => {
+      await _supabase.from('assegnazioni').delete().eq('slot_id', wsSlot.id);
+      await _supabase.from('turni_contatore').delete().eq('slot_id', wsSlot.id);
+      wsAssegnazioni = [];
+      renderWsCalendar();
+      renderUnassigned();
+      renderCounters();
+      showToast('Assegnazioni azzerate', 'success');
+    });
+});
 
 document.getElementById('pubblica-cal-btn').addEventListener('click', () => {
   adminConfirm('Pubblica calendario',
