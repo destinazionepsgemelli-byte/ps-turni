@@ -443,8 +443,8 @@ async function mostraCalendarioSelezionato(slot) {
 // ---- NAV ----
 function setupPubNav(hasCalendari) {
   const nav = document.getElementById('pub-nav');
-  // Mostra il pulsante solo se esistono calendari pubblicati
-  nav.style.display = hasCalendari ? 'flex' : 'none';
+  // Mostra sempre il pulsante (il modal mostra "nessun calendario" se vuoto)
+  nav.style.display = 'flex';
 
   const btn = document.getElementById('btn-all-calendari');
   if (btn) btn.addEventListener('click', openCalendariModal);

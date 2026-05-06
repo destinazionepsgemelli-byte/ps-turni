@@ -631,9 +631,10 @@ function openManualAssign(giorno, btn) {
     wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px';
     daAssegnare.forEach(t => {
       wrap.appendChild(makeDaAssegnareBadge(t, () => {
-        // Nasconde il popup senza rimuoverlo (drag ha bisogno del DOM element)
+        // opacity:0 invece di visibility:hidden — non cancella il drag in Chrome
         if (_wsPopup) {
-          _wsPopup.style.visibility = 'hidden';
+          _wsPopup.style.opacity = '0';
+          _wsPopup.style.pointerEvents = 'none';
           document.removeEventListener('click', closeWsPopupOutside);
         }
         // Chiude definitivamente al dragend
