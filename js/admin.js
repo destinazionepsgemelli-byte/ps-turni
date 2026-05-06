@@ -630,7 +630,19 @@ function openManualAssign(giorno, btn) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px';
     daAssegnare.forEach(t => {
-      wrap.appendChild(makeDaAssegnareBadge(t, () => closeWsPopup()));
+      wrap.appendChild(makeDaAssegnareBadge(t, () => {
+        // Nasconde il popup senza rimuoverlo (drag ha bisogno del DOM element)
+        if (_wsPopup) {
+          _wsPopup.style.visibility = 'hidden';
+          document.removeEventListener('click', closeWsPopupOutside);
+        }
+        // Chiude definitivamente al dragend
+        const onDragEnd = () => {
+          closeWsPopup();
+          document.removeEventListener('dragend', onDragEnd);
+        };
+        document.addEventListener('dragend', onDragEnd);
+      }));
     });
     popup.appendChild(wrap);
   }

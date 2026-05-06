@@ -15,16 +15,15 @@
 <body>
 
 <header>
-  <div style="display:flex;align-items:center;gap:1rem;flex:1;min-width:0">
+  <div style="display:flex;align-items:center;gap:1rem;flex:1;min-width:0;cursor:pointer" onclick="location.reload()" title="Torna alla pagina principale">
     <div class="header-logo">🚑</div>
     <div style="min-width:0">
       <h1>Destinazione PS – Preferenze Turni</h1>
       <div class="subtitle">Inserisci le tue desiderata e indisponibilità</div>
     </div>
   </div>
-  <div id="pub-nav" style="display:none;align-items:center;gap:.6rem">
-    <button class="btn btn-secondary btn-sm pub-toggle-btn active" data-target="richieste">📝 Richieste Aperte</button>
-    <button class="btn btn-secondary btn-sm pub-toggle-btn active" data-target="calendari">📋 Calendari definitivi</button>
+  <div id="pub-nav" style="display:none;align-items:center">
+    <button class="btn btn-secondary btn-sm" id="btn-all-calendari">📋 Calendari definitivi</button>
   </div>
   <div style="display:flex;align-items:center;gap:1rem;flex:1;justify-content:flex-end">
     <span style="font-size:.8rem;opacity:.7"><span class="live-dot"></span>Live</span>

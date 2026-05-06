@@ -371,38 +371,83 @@ function subscribeRealtime(slot) {
     .subscribe();
 }
 
-// ---- NAV ----
-function setupPubNav(hasRichieste, hasCalendari) {
-  const nav = document.getElementById('pub-nav');
-  const secR = document.getElementById('section-richieste');
+// ---- MODAL TUTTI I CALENDARI ----
+function openCalendariModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'calendari-modal';
+
+  const box = document.createElement('div');
+  box.className = 'modal-box';
+  box.style.cssText = 'width:380px;max-width:92vw;max-height:70vh;display:flex;flex-direction:column;gap:.6rem';
+
+  const title = document.createElement('h3');
+  title.textContent = '📋 Tutti i calendari pubblicati';
+  box.appendChild(title);
+
+  const list = document.createElement('div');
+  list.style.cssText = 'overflow-y:auto;flex:1;border:1px solid var(--border);border-radius:8px';
+
+  _supabase.from('slots').select('*')
+    .eq('pubblicato', true).eq('calendario_pubblicato', true)
+    .order('data_inizio', { ascending: false })
+    .then(({ data: slots }) => {
+      if (!slots || !slots.length) {
+        list.innerHTML = '<p style="padding:1rem;color:var(--text-muted);font-size:.9rem">Nessun calendario pubblicato.</p>';
+        return;
+      }
+      slots.forEach(slot => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:.75rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s';
+        item.innerHTML = `<strong style="color:var(--text)">${slot.nome}</strong>
+          <div style="font-size:.8rem;color:var(--text-muted);margin-top:2px">${fmtDate(slot.data_inizio)} → ${fmtDate(slot.data_fine)}</div>`;
+        item.addEventListener('mouseenter', () => item.style.background = 'color-mix(in srgb, var(--bg) 60%, var(--bg-card))');
+        item.addEventListener('mouseleave', () => item.style.background = '');
+        item.addEventListener('click', () => { closeCalendariModal(); mostraCalendarioSelezionato(slot); });
+        list.appendChild(item);
+      });
+    });
+
+  box.appendChild(list);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn btn-secondary';
+  closeBtn.style.width = '100%';
+  closeBtn.textContent = 'Chiudi';
+  closeBtn.addEventListener('click', closeCalendariModal);
+  box.appendChild(closeBtn);
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeCalendariModal(); });
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+function closeCalendariModal() {
+  const m = document.getElementById('calendari-modal');
+  if (m) m.remove();
+}
+
+async function mostraCalendarioSelezionato(slot) {
   const secC = document.getElementById('section-calendari');
+  secC.innerHTML = '';
+  secC.style.display = '';
+  const heading = document.createElement('h2');
+  heading.style.cssText = 'color:var(--text);font-size:1.05rem;font-weight:700;margin-bottom:1.2rem';
+  heading.textContent = `📋 ${slot.nome}`;
+  secC.appendChild(heading);
+  const section = await buildCalendarioSection(slot);
+  secC.appendChild(section);
+  secC.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
-  // Mostra la nav se c'è almeno una sezione
-  nav.style.display = (hasRichieste || hasCalendari) ? 'flex' : 'none';
+// ---- NAV ----
+function setupPubNav(hasCalendari) {
+  const nav = document.getElementById('pub-nav');
+  // Mostra il pulsante solo se esistono calendari pubblicati
+  nav.style.display = hasCalendari ? 'flex' : 'none';
 
-  // Stato iniziale: entrambe attive se presenti, altrimenti solo quella disponibile
-  secR.style.display = hasRichieste ? '' : 'none';
-  secC.style.display = hasCalendari ? '' : 'none';
-
-  const btnR = nav.querySelector('[data-target="richieste"]');
-  const btnC = nav.querySelector('[data-target="calendari"]');
-  if (!btnR || !btnC) return;
-
-  // Stato iniziale pulsanti
-  btnR.classList.toggle('active', hasRichieste);
-  btnC.classList.toggle('active', hasCalendari);
-
-  // Toggle indipendente
-  btnR.addEventListener('click', () => {
-    const visible = secR.style.display !== 'none';
-    secR.style.display = visible ? 'none' : '';
-    btnR.classList.toggle('active', !visible);
-  });
-  btnC.addEventListener('click', () => {
-    const visible = secC.style.display !== 'none';
-    secC.style.display = visible ? 'none' : '';
-    btnC.classList.toggle('active', !visible);
-  });
+  const btn = document.getElementById('btn-all-calendari');
+  if (btn) btn.addEventListener('click', openCalendariModal);
 }
 
 // ---- INIT ----
@@ -425,27 +470,29 @@ async function loadAllSlots() {
 
   const desiderataSlots = slots.filter(s => !s.calendario_pubblicato);
   const publishedSlots  = slots.filter(s =>  s.calendario_pubblicato);
+  // In vista: solo gli ultimi 2 calendari pubblicati
+  const publishedRecent = publishedSlots.slice(0, 2);
 
-  // Slot aperti per desiderata
+  // Slot aperti per desiderata (tutti)
   for (const slot of desiderataSlots) {
     const section = await buildDesiderataSection(slot);
     secR.appendChild(section);
     subscribeRealtime(slot);
   }
 
-  // Calendari pubblicati
-  if (publishedSlots.length > 0) {
+  // Ultimi 2 calendari pubblicati
+  if (publishedRecent.length > 0) {
     const heading = document.createElement('h2');
     heading.style.cssText = 'color:var(--text);font-size:1.05rem;font-weight:700;margin-bottom:1.2rem';
-    heading.textContent = '📋 Calendari definitivi';
+    heading.textContent = '📋 Ultimi calendari';
     secC.appendChild(heading);
-    for (const slot of publishedSlots) {
+    for (const slot of publishedRecent) {
       const section = await buildCalendarioSection(slot);
       secC.appendChild(section);
     }
   }
 
-  setupPubNav(desiderataSlots.length > 0, publishedSlots.length > 0);
+  setupPubNav(publishedSlots.length > 0);
 }
 
 // ---- EVENT LISTENERS MODAL ----
