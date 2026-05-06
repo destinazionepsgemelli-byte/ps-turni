@@ -27,7 +27,15 @@
   </div>
 </header>
 
-<div class="container" id="slots-container"></div>
+<nav class="pub-nav" id="pub-nav" style="display:none">
+  <button class="pub-nav-btn active" data-target="richieste">📝 Richieste Aperte</button>
+  <button class="pub-nav-btn" data-target="calendari">📋 Calendari definitivi</button>
+</nav>
+
+<div class="container" id="slots-container">
+  <div id="section-richieste"></div>
+  <div id="section-calendari"></div>
+</div>
 
 <div class="container" id="no-slot" style="display:none">
   <div class="card" style="text-align:center;padding:3rem">

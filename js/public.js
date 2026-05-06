@@ -188,12 +188,23 @@ async function buildDesiderataSection(slot) {
       <strong class="${chiuso ? 'stato-chiuso' : 'stato-aperto'}" id="stato-${slot.id}">${chiuso ? '🔒 Chiuso' : '✅ Aperto'}</strong>
     </div>
   `;
+  // Pulsante collapse
+  const collapseBtn = document.createElement('button');
+  collapseBtn.className = 'slot-collapse-btn';
+  collapseBtn.textContent = '▼';
+  collapseBtn.title = 'Comprimi/Espandi';
+  infoBar.appendChild(collapseBtn);
   section.appendChild(infoBar);
 
   // Tabella
   const card = document.createElement('div');
   card.className = 'card';
   card.style.cssText = 'padding:0;overflow:hidden';
+  collapseBtn.addEventListener('click', () => {
+    const collapsed = card.style.display === 'none';
+    card.style.display = collapsed ? '' : 'none';
+    collapseBtn.textContent = collapsed ? '▼' : '▶';
+  });
   const wrap = document.createElement('div');
   wrap.style.overflowX = 'auto';
   const table = document.createElement('table');
@@ -280,12 +291,23 @@ async function buildCalendarioSection(slot) {
       <strong class="stato-aperto">📋 Calendario pubblicato</strong>
     </div>
   `;
+  // Pulsante collapse
+  const collapseBtn2 = document.createElement('button');
+  collapseBtn2.className = 'slot-collapse-btn';
+  collapseBtn2.textContent = '▼';
+  collapseBtn2.title = 'Comprimi/Espandi';
+  infoBar.appendChild(collapseBtn2);
   section.appendChild(infoBar);
 
   // Tabella assegnazioni (read-only)
   const card = document.createElement('div');
   card.className = 'card';
   card.style.cssText = 'padding:0;overflow:hidden';
+  collapseBtn2.addEventListener('click', () => {
+    const collapsed = card.style.display === 'none';
+    card.style.display = collapsed ? '' : 'none';
+    collapseBtn2.textContent = collapsed ? '▼' : '▶';
+  });
   const wrap = document.createElement('div');
   wrap.style.overflowX = 'auto';
   const table = document.createElement('table');
@@ -349,47 +371,74 @@ function subscribeRealtime(slot) {
     .subscribe();
 }
 
+// ---- NAV ----
+function setupPubNav(hasRichieste, hasCalendari) {
+  const nav = document.getElementById('pub-nav');
+  const secR = document.getElementById('section-richieste');
+  const secC = document.getElementById('section-calendari');
+
+  if (!hasRichieste && !hasCalendari) { nav.style.display = 'none'; return; }
+
+  // Mostra nav solo se ci sono entrambe le sezioni
+  nav.style.display = hasRichieste && hasCalendari ? 'flex' : 'none';
+
+  // Default: richieste se ci sono, altrimenti calendari
+  const defaultTarget = hasRichieste ? 'richieste' : 'calendari';
+  secR.style.display = hasRichieste ? '' : 'none';
+  secC.style.display = hasCalendari && !hasRichieste ? '' : 'none';
+
+  nav.querySelectorAll('.pub-nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.target === defaultTarget);
+    btn.addEventListener('click', () => {
+      nav.querySelectorAll('.pub-nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      secR.style.display = btn.dataset.target === 'richieste' ? '' : 'none';
+      secC.style.display = btn.dataset.target === 'calendari' ? '' : 'none';
+    });
+  });
+}
+
 // ---- INIT ----
 async function loadAllSlots() {
   const { data: slots } = await _supabase
     .from('slots').select('*').eq('pubblicato', true)
     .order('data_inizio', { ascending: false });
 
-  const container = document.getElementById('slots-container');
-  container.innerHTML = '';
+  const secR = document.getElementById('section-richieste');
+  const secC = document.getElementById('section-calendari');
+  secR.innerHTML = '';
+  secC.innerHTML = '';
 
   if (!slots || slots.length === 0) {
     document.getElementById('no-slot').style.display = '';
+    setupPubNav(false, false);
     return;
   }
   document.getElementById('no-slot').style.display = 'none';
 
   const desiderataSlots = slots.filter(s => !s.calendario_pubblicato);
-  const publishedSlots = slots.filter(s => s.calendario_pubblicato);
+  const publishedSlots  = slots.filter(s =>  s.calendario_pubblicato);
 
   // Slot aperti per desiderata
   for (const slot of desiderataSlots) {
     const section = await buildDesiderataSection(slot);
-    container.appendChild(section);
+    secR.appendChild(section);
     subscribeRealtime(slot);
   }
 
-  // Separatore + calendari pubblicati
+  // Calendari pubblicati
   if (publishedSlots.length > 0) {
-    if (desiderataSlots.length > 0) {
-      const sep = document.createElement('div');
-      sep.style.cssText = 'border-top:2px solid var(--border);margin:1rem 0 2rem';
-      container.appendChild(sep);
-    }
     const heading = document.createElement('h2');
     heading.style.cssText = 'color:var(--text);font-size:1.05rem;font-weight:700;margin-bottom:1.2rem';
     heading.textContent = '📋 Calendari definitivi';
-    container.appendChild(heading);
+    secC.appendChild(heading);
     for (const slot of publishedSlots) {
       const section = await buildCalendarioSection(slot);
-      container.appendChild(section);
+      secC.appendChild(section);
     }
   }
+
+  setupPubNav(desiderataSlots.length > 0, publishedSlots.length > 0);
 }
 
 // ---- EVENT LISTENERS MODAL ----

@@ -182,7 +182,7 @@ async function loadSlots() {
       ? '<span style="color:#1565c0">📋 Calendario pubblicato</span>'
       : s.pubblicato
         ? '<span style="color:#2e7d32">✅ Aperto per desiderata</span>'
-        : '<span style="color:#aaa">⏸ Nascosto</span>';
+        : '<span style="color:#aaa">🙈 Slot nascosto al pubblico</span>';
     const nomeEsc = s.nome.replace(/'/g,"\\'");
     row.innerHTML = `
       <span style="font-weight:600;flex:1;color:var(--text)">${s.nome}</span>
@@ -336,6 +336,18 @@ async function loadWorkspace() {
   renderWsCalendar();
   renderUnassigned();
   renderCounters();
+  updatePubblicaBtn();
+}
+
+function updatePubblicaBtn() {
+  const btn = document.getElementById('pubblica-cal-btn');
+  if (wsSlot && wsSlot.calendario_pubblicato) {
+    btn.textContent = '🔓 Chiudi pubblicazione';
+    btn.className = 'btn btn-secondary btn-sm';
+  } else {
+    btn.textContent = '✅ Pubblica';
+    btn.className = 'btn btn-success btn-sm';
+  }
 }
 
 function renderWsPreferenze() {
@@ -945,12 +957,27 @@ document.getElementById('azzera-btn').addEventListener('click', () => {
 });
 
 document.getElementById('pubblica-cal-btn').addEventListener('click', () => {
-  adminConfirm('Pubblica calendario',
-    'Il calendario sarà visibile al pubblico. Continuare?',
-    async () => {
-      await _supabase.from('slots').update({ calendario_pubblicato: true }).eq('id', wsSlot.id);
-      showToast('Calendario pubblicato!', 'success');
-    });
+  if (wsSlot.calendario_pubblicato) {
+    adminConfirm('Chiudi pubblicazione',
+      'Il calendario sarà nascosto al pubblico. Le assegnazioni vengono mantenute.',
+      async () => {
+        await _supabase.from('slots').update({ calendario_pubblicato: false }).eq('id', wsSlot.id);
+        wsSlot.calendario_pubblicato = false;
+        showToast('Pubblicazione chiusa', 'success');
+        updatePubblicaBtn();
+        loadSlots();
+      });
+  } else {
+    adminConfirm('Pubblica calendario',
+      'Il calendario sarà visibile al pubblico. Continuare?',
+      async () => {
+        await _supabase.from('slots').update({ calendario_pubblicato: true }).eq('id', wsSlot.id);
+        wsSlot.calendario_pubblicato = true;
+        showToast('Calendario pubblicato!', 'success');
+        updatePubblicaBtn();
+        loadSlots();
+      });
+  }
 });
 
 // =============================================
