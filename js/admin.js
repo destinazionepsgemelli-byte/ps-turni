@@ -185,7 +185,7 @@ async function loadSlots() {
         : '<span style="color:#aaa">🙈 Slot nascosto al pubblico</span>';
     const nomeEsc = s.nome.replace(/'/g,"\\'");
     row.innerHTML = `
-      <span style="font-weight:600;flex:1;color:var(--text)">${s.nome}</span>
+      <span style="font-weight:600;flex:1;color:#1565c0;cursor:pointer;text-decoration:underline" onclick="goToWorkspace('${s.id}')" title="Apri nel Workspace">${s.nome}</span>
       <span style="font-size:.82rem;color:var(--text-muted)">${fmtDate(s.data_inizio)} → ${fmtDate(s.data_fine)}</span>
       <span style="font-size:.8rem">${statoLabel}</span>
       ${s.calendario_pubblicato ? `<button class="btn btn-secondary btn-sm" onclick="openRiapriSlot('${s.id}','${s.data_chiusura_richieste||''}')">🔓 Riapri</button>` : ''}
@@ -297,6 +297,15 @@ function duplicaSlot(id, nome) {
       showToast(`Slot duplicato come "Copia di ${orig.nome}"!`, 'success');
       loadSlots();
     });
+}
+
+function goToWorkspace(slotId) {
+  // Attiva la tab Workspace
+  document.querySelector('.nav-tab[data-tab="workspace"]').click();
+  // Seleziona lo slot nel menu a tendina
+  document.getElementById('ws-slot-select').value = slotId;
+  // Carica il workspace
+  loadWorkspace();
 }
 
 function deleteSlot(id, nome) {
