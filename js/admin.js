@@ -329,6 +329,9 @@ async function loadWorkspace() {
   wsTurnisti = turnisti || [];
 
   document.getElementById('ws-content').style.display = '';
+  const cur = document.getElementById('ws-slot-current');
+  cur.textContent = `📋 ${wsSlot.nome}`;
+  cur.style.display = '';
   renderWsPreferenze();
   renderWsCalendar();
   renderUnassigned();
@@ -699,10 +702,12 @@ function getFattiMap() {
   return m;
 }
 
-// Turnisti che non hanno ancora raggiunto il loro turni_dovuti
+// Turnisti che non hanno ancora raggiunto il loro turni_dovuti (ordine alfabetico)
 function getDaAssegnare() {
   const fatti = getFattiMap();
-  return wsTurnisti.filter(t => (fatti[t.nome] || 0) < t.turni_dovuti_per_slot);
+  return wsTurnisti
+    .filter(t => (fatti[t.nome] || 0) < t.turni_dovuti_per_slot)
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
 }
 
 function makeDaAssegnareBadge(t, onDragStart) {
