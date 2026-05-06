@@ -797,8 +797,8 @@ function renderCounters() {
       // Sotto il range → rosso
       deltaCss = 'color:#c62828;font-weight:700';
     } else if (delta < 0) {
-      // Leggermente sotto target ma nel range → arancione
-      deltaCss = 'color:#e65100;font-weight:700';
+      // Leggermente sotto target ma nel range → giallo
+      deltaCss = 'color:#f9a825;font-weight:700';
     } else if (delta < 0.5) {
       // Leggermente sopra target ma nel range → giallo
       deltaCss = 'color:#f9a825;font-weight:700';
