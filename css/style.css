@@ -221,20 +221,19 @@ header .subtitle { font-size: .85rem; opacity: .7; margin-top: 2px; }
 .drag-over { outline: 2px dashed #1565c0; background: #e3f2fd !important; }
 .indisp-highlight { background: rgba(244, 67, 54, 0.12) !important; outline: 1px dashed rgba(244, 67, 54, 0.5); }
 
-/* ========== NAV PUBBLICA ========== */
-.pub-nav {
-  display: flex; justify-content: center; gap: .6rem;
-  padding: .7rem 1rem; background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 100;
+/* ========== TOGGLE BUTTONS HEADER PUBBLICA ========== */
+.pub-toggle-btn {
+  padding: .45rem 1.3rem; border-radius: 24px; font-size: .88rem; font-weight: 700;
+  cursor: pointer; border: 2px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.1); color: rgba(255,255,255,.65);
+  transition: all .2s; white-space: nowrap;
 }
-.pub-nav-btn {
-  padding: .4rem 1.1rem; border-radius: 20px; font-size: .85rem; font-weight: 600;
-  cursor: pointer; border: 1.5px solid var(--border);
-  background: var(--bg); color: var(--text); transition: all .15s;
+.pub-toggle-btn.active {
+  background: white; color: #3a2e12; border-color: white;
+  color: var(--header-bg2, #3a2e12);
 }
-.pub-nav-btn.active { background: #1565c0; color: white; border-color: #1565c0; }
-.pub-nav-btn:hover:not(.active) { filter: brightness(.92); }
+.pub-toggle-btn:hover { background: rgba(255,255,255,.22); color: white; }
+.pub-toggle-btn.active:hover { background: #f0e8d0; }
 
 /* ========== COLLAPSE SLOT ========== */
 .slot-collapse-btn {

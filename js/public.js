@@ -377,24 +377,31 @@ function setupPubNav(hasRichieste, hasCalendari) {
   const secR = document.getElementById('section-richieste');
   const secC = document.getElementById('section-calendari');
 
-  if (!hasRichieste && !hasCalendari) { nav.style.display = 'none'; return; }
+  // Mostra la nav solo se ci sono entrambe le sezioni
+  nav.style.display = (hasRichieste && hasCalendari) ? 'flex' : 'none';
 
-  // Mostra nav solo se ci sono entrambe le sezioni
-  nav.style.display = hasRichieste && hasCalendari ? 'flex' : 'none';
-
-  // Default: richieste se ci sono, altrimenti calendari
-  const defaultTarget = hasRichieste ? 'richieste' : 'calendari';
+  // Stato iniziale: entrambe attive se presenti, altrimenti solo quella disponibile
   secR.style.display = hasRichieste ? '' : 'none';
-  secC.style.display = hasCalendari && !hasRichieste ? '' : 'none';
+  secC.style.display = hasCalendari ? '' : 'none';
 
-  nav.querySelectorAll('.pub-nav-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.target === defaultTarget);
-    btn.addEventListener('click', () => {
-      nav.querySelectorAll('.pub-nav-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      secR.style.display = btn.dataset.target === 'richieste' ? '' : 'none';
-      secC.style.display = btn.dataset.target === 'calendari' ? '' : 'none';
-    });
+  const btnR = nav.querySelector('[data-target="richieste"]');
+  const btnC = nav.querySelector('[data-target="calendari"]');
+  if (!btnR || !btnC) return;
+
+  // Stato iniziale pulsanti
+  btnR.classList.toggle('active', hasRichieste);
+  btnC.classList.toggle('active', hasCalendari);
+
+  // Toggle indipendente
+  btnR.addEventListener('click', () => {
+    const visible = secR.style.display !== 'none';
+    secR.style.display = visible ? 'none' : '';
+    btnR.classList.toggle('active', !visible);
+  });
+  btnC.addEventListener('click', () => {
+    const visible = secC.style.display !== 'none';
+    secC.style.display = visible ? 'none' : '';
+    btnC.classList.toggle('active', !visible);
   });
 }
 

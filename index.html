@@ -15,22 +15,23 @@
 <body>
 
 <header>
-  <div class="header-logo">🚑</div>
-  <div>
-    <h1>Destinazione PS – Preferenze Turni</h1>
-    <div class="subtitle">Inserisci le tue desiderata e indisponibilità</div>
+  <div style="display:flex;align-items:center;gap:1rem;flex:1;min-width:0">
+    <div class="header-logo">🚑</div>
+    <div style="min-width:0">
+      <h1>Destinazione PS – Preferenze Turni</h1>
+      <div class="subtitle">Inserisci le tue desiderata e indisponibilità</div>
+    </div>
   </div>
-  <div style="margin-left:auto;display:flex;align-items:center;gap:1rem">
+  <div id="pub-nav" style="display:none;align-items:center;gap:.6rem">
+    <button class="pub-toggle-btn active" data-target="richieste">📝 Richieste Aperte</button>
+    <button class="pub-toggle-btn active" data-target="calendari">📋 Calendari definitivi</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:1rem;flex:1;justify-content:flex-end">
     <span style="font-size:.8rem;opacity:.7"><span class="live-dot"></span>Live</span>
     <button class="btn btn-secondary btn-sm" id="theme-toggle">🌙 Scuro</button>
     <a href="admin.html" class="btn btn-secondary btn-sm">🔧 Admin</a>
   </div>
 </header>
-
-<nav class="pub-nav" id="pub-nav" style="display:none">
-  <button class="pub-nav-btn active" data-target="richieste">📝 Richieste Aperte</button>
-  <button class="pub-nav-btn" data-target="calendari">📋 Calendari definitivi</button>
-</nav>
 
 <div class="container" id="slots-container">
   <div id="section-richieste"></div>
