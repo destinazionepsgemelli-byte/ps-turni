@@ -793,15 +793,18 @@ function renderCounters() {
     const delta = fatti - t.turni_dovuti_per_slot;
     const sign = delta >= 0 ? '+' : '';
     let deltaCss;
-    if (delta < -0.5) {
-      // Sotto il range minimo → rosso
+    if (delta === 0) {
+      // Esattamente al target → verde
+      deltaCss = 'color:#2e7d32;font-weight:700';
+    } else if (delta < -0.5) {
+      // Sotto il range (< turni_dovuti - 0.5) → rosso
       deltaCss = 'color:#c62828;font-weight:700';
-    } else if (delta <= 0.5) {
-      // Nel range accettabile ±0.5 → arancione
-      deltaCss = 'color:#e65100;font-weight:700';
-    } else {
-      // Sopra il range → bianco su sfondo arancione
+    } else if (delta > 0.5) {
+      // Sopra il range (> turni_dovuti + 0.5) → bianco su sfondo arancione
       deltaCss = 'color:white;background:#e65100;border-radius:4px;padding:1px 7px;font-weight:700;display:inline-block';
+    } else {
+      // Nel range ±0.5 ma non al target esatto → arancione
+      deltaCss = 'color:#e65100;font-weight:700';
     }
     html += `<tr>
       <td style="padding:.3rem .5rem;border-bottom:1px solid var(--border);color:var(--text)">${t.nome}</td>
