@@ -178,11 +178,15 @@ async function loadSlots() {
   data.forEach(s => {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--border);flex-wrap:wrap';
+    const oggi = new Date().toISOString().slice(0, 10);
+    const richiesteChiuse = s.data_chiusura_richieste && oggi > s.data_chiusura_richieste;
     const statoLabel = s.calendario_pubblicato
       ? '<span style="color:#1565c0">📋 Calendario pubblicato</span>'
-      : s.pubblicato
-        ? '<span style="color:#2e7d32">✅ Aperto per desiderata</span>'
-        : '<span style="color:#aaa">🙈 Slot nascosto al pubblico</span>';
+      : !s.pubblicato
+        ? '<span style="color:#aaa">🙈 Slot nascosto al pubblico</span>'
+        : richiesteChiuse
+          ? '<span style="color:#e65100">🔒 Richieste chiuse</span>'
+          : '<span style="color:#2e7d32">✅ Aperto per desiderata</span>';
     const nomeEsc = s.nome.replace(/'/g,"\\'");
     row.innerHTML = `
       <span style="font-weight:600;flex:1;color:var(--text);cursor:pointer" onclick="goToWorkspace('${s.id}')" title="Apri nel Workspace">${s.nome}</span>
