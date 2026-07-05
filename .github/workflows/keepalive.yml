@@ -1,0 +1,59 @@
+name: Keep Alive (Supabase + GitHub)
+
+# Doppio scopo:
+#  1. Pinga Supabase (query REST) → il DB free tier non va in pausa (soglia 7 giorni).
+#  2. Fa un commit automatico su un file timestamp → il repository resta "attivo",
+#     così GitHub NON disabilita gli scheduled workflow (che sospende dopo 60 giorni
+#     di inattività del repo). Senza questo, lo scheduler si ferma e il DB va in pausa.
+#
+# Gira ogni 2 giorni (margine ampio sotto la soglia di 7 giorni di Supabase).
+# Triggerabile manualmente da Actions → "Run workflow" per test immediato.
+
+on:
+  schedule:
+    - cron: '0 7 */2 * *'   # ogni 2 giorni alle 07:00 UTC
+  workflow_dispatch:         # trigger manuale
+
+permissions:
+  contents: write            # necessario per l'auto-commit
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ping Supabase REST API
+        env:
+          SUPA_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZ2RuaGlueHZhb2VpY3Bsa2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjkxMTEsImV4cCI6MjA5MzU0NTExMX0.tw3Po_SURv7ycAIkT9sK9XnF9ioVoLUHCSDh8wJrDbA
+        run: |
+          # '|| echo 000' evita che il flag -e della shell interrompa lo step
+          # se curl fallisce (es. DNS): catturiamo lo stato e decidiamo noi.
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPA_KEY" \
+            -H "Authorization: Bearer $SUPA_KEY" \
+            "https://hqgdnhinxvaoeicplkbj.supabase.co/rest/v1/turnisti?select=id&limit=1" || echo "000")
+
+          echo "Supabase HTTP status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✓ Supabase attivo e raggiungibile"
+          else
+            echo "::warning::Supabase non ha risposto 200 (ricevuto: $HTTP_STATUS). Il progetto potrebbe essere in pausa."
+          fi
+
+      - name: Aggiorna timestamp e commit (tiene vivo lo scheduler GitHub)
+        run: |
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive
+          git config user.name "keepalive-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add .keepalive
+          # commit solo se c'è una modifica effettiva; non fallire se non c'è nulla
+          if git diff --staged --quiet; then
+            echo "Nessuna modifica da committare"
+          else
+            git commit -m "chore: keepalive $(date -u +%Y-%m-%d)"
+            git push
+            echo "✓ Commit keepalive effettuato"
+          fi
